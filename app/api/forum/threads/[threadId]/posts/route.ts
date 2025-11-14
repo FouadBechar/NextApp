@@ -42,7 +42,19 @@ export async function POST(req: Request, context: any) {
     const userId = sessionData?.session?.user?.id;
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json();
+  let body: any = {};
+  try {
+    const text = await req.text();
+    if (!text) {
+      console.error('Empty request body for creating forum post');
+      return NextResponse.json({ error: 'Empty request body' }, { status: 400 });
+    }
+    body = JSON.parse(text);
+  } catch (e) {
+    console.error('Invalid JSON body for creating forum post', e);
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
   let content = String(body.content || '').trim();
   content = truncate(content, 20000);
   content = sanitizeText(content);

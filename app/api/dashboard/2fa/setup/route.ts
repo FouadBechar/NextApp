@@ -3,6 +3,7 @@ import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/utils/supabase/client';
+import parseJsonOrEmpty from '@/utils/parse-request';
 
 function isoError(msg = 'Internal server error') {
   return NextResponse.json({ error: msg }, { status: 500 });
@@ -53,7 +54,13 @@ async function verifyUserFromRequest(req: NextRequest, expectedUserId?: string) 
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body: any = {};
+    try {
+      body = await parseJsonOrEmpty(req as unknown as Request);
+    } catch (e) {
+      console.error('Invalid JSON body for 2fa setup', e);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { userId } = body || {};
     if (!userId) return NextResponse.json({ error: 'missing userId' }, { status: 400 });
 

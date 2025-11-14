@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticator } from 'otplib';
 import { createAdminClient } from '@/utils/supabase/client';
+import parseJsonOrEmpty from '@/utils/parse-request';
 
 function isoError(msg = 'Internal server error') {
   return NextResponse.json({ error: msg }, { status: 500 });
@@ -8,7 +9,13 @@ function isoError(msg = 'Internal server error') {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body: any = {};
+    try {
+      body = await parseJsonOrEmpty(req as unknown as Request);
+    } catch (e) {
+      console.error('Invalid JSON body for auth 2fa verify-login', e);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { userId, token } = body || {};
     if (!userId) return NextResponse.json({ error: 'missing userId' }, { status: 400 });
     if (!token) return NextResponse.json({ error: 'missing token' }, { status: 400 });

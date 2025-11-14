@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/client';
+import parseJsonOrEmpty from '@/utils/parse-request';
 import { createServerClient } from '@supabase/ssr';
 
 function isoError(msg = 'Internal server error') {
@@ -160,7 +161,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body: any = {};
+    try {
+      body = await parseJsonOrEmpty(req as unknown as Request);
+    } catch (e) {
+      console.error('Invalid JSON body for profile POST', e);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { userId, full_name, username, avatar_path } = body || {};
 
     if (!userId) return NextResponse.json({ error: 'missing userId' }, { status: 400 });

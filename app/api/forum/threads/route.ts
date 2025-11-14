@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/client';
 import { sanitizeText, truncate } from '@/utils/sanitizer';
+import parseJsonOrEmpty from '@/utils/parse-request';
 
 export async function GET() {
   try {
@@ -48,7 +49,14 @@ export async function POST(req: Request) {
     const userId = sessionData?.session?.user?.id;
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json();
+  let body: any = {};
+  try {
+    body = await parseJsonOrEmpty(req);
+  } catch (e) {
+    console.error('Invalid JSON body for creating thread', e);
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
   let title = String(body.title || '').trim();
   let content = String(body.content || '').trim();
 

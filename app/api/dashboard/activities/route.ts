@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/client';
+import parseJsonOrEmpty from '@/utils/parse-request';
 import { createServerClient } from '@supabase/ssr';
 
 async function verifyUserFromRequest(req: NextRequest, expectedUserId?: string) {
@@ -90,7 +91,13 @@ export async function GET(req: Request) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body: any = {};
+    try {
+      body = await parseJsonOrEmpty(req as unknown as Request);
+    } catch (e) {
+      console.error('Invalid JSON body for activities POST', e);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { userId, title, description } = body || {};
     if (!userId) return NextResponse.json({ error: 'missing userId' }, { status: 400 });
     if (!title) return NextResponse.json({ error: 'missing title' }, { status: 400 });

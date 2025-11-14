@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/client';
+import parseJsonOrEmpty from '@/utils/parse-request';
 import { createServerClient } from '@supabase/ssr';
 
 function isoError(msg = 'Internal server error') {
@@ -52,7 +53,13 @@ async function verifyUserFromRequest(req: NextRequest, expectedUserId?: string) 
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body: any = {};
+    try {
+      body = await parseJsonOrEmpty(req as unknown as Request);
+    } catch (e) {
+      console.error('Invalid JSON body for 2fa disable', e);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const { userId } = body || {};
     if (!userId) return NextResponse.json({ error: 'missing userId' }, { status: 400 });
 
