@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { verifyOtpSchema } from '@/lib/utils/validation';
 import { verifyOtp } from '@/lib/utils/auth-helpers';
+import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -57,6 +58,36 @@ export function VerifyForm() {
 
     try {
       await verifyOtp(email, data.otp);
+
+      // After verification, persist chosen username (if any) to profiles table
+      try {
+        const verificationUsername = sessionStorage.getItem('verificationUsername');
+        if (verificationUsername) {
+          const supabase = createClient();
+          // Get current user id from client session
+          const { data: userData, error: userErr } = await supabase.auth.getUser();
+          if (!userErr && userData?.user?.id) {
+            const userId = userData.user.id;
+            // Attempt to update the profiles row for this user
+            try {
+              const { error: updErr } = await supabase
+                .from('profiles')
+                .update({ username: verificationUsername })
+                .eq('id', userId);
+              if (updErr) {
+                console.warn('Failed to persist username after verification', updErr);
+              }
+            } catch (e) {
+              console.warn('Unexpected error persisting username', e);
+            }
+          }
+          // Clean up regardless of success
+          sessionStorage.removeItem('verificationUsername');
+        }
+      } catch (e) {
+        console.warn('Error while persisting username after verification', e);
+      }
+
       sessionStorage.removeItem('verificationEmail');
 
       if (isPasswordReset) {
