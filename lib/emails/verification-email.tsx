@@ -13,11 +13,13 @@ import * as React from 'react';
 interface VerificationEmailProps {
   otp: string;
   isPasswordReset?: boolean;
+  username?: string | null;
 }
 
 export const VerificationEmail = ({
   otp,
   isPasswordReset = false,
+  username = null,
 }: VerificationEmailProps) => {
   return (
     <Html>
@@ -32,6 +34,9 @@ export const VerificationEmail = ({
               ? 'Reset your password'
               : 'Verify your email address'}
           </Heading>
+          {username ? (
+            <Text style={text}>Hi {username},</Text>
+          ) : null}
           <Text style={text}>
             {isPasswordReset
               ? 'You requested to reset your password. Please use the following code to verify your identity:'

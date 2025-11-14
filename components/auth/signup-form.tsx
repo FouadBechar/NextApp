@@ -82,6 +82,7 @@ export function SignupForm() {
           type: 'verification',
           email: data.email,
           password: data.password,
+          username: (data as any).username,
         }),
       });
 

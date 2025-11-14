@@ -14,11 +14,13 @@ import * as React from 'react';
 interface WelcomeEmailProps {
   userEmail: string;
   dashboardUrl?: string;
+  username?: string | null;
 }
 
 export const WelcomeEmail = ({
   userEmail,
   dashboardUrl = 'http://localhost:3000/dashboard',
+  username = null,
 }: WelcomeEmailProps) => {
   return (
     <Html>
@@ -28,7 +30,7 @@ export const WelcomeEmail = ({
         <Container style={container}>
           <Heading style={h1}>Welcome to our platform!</Heading>
           <Text style={text}>
-            Thank you for joining us, {userEmail}! We&apos;re excited to have
+            Thank you for joining us, {username || userEmail}! We&apos;re excited to have
             you on board.
           </Text>
           <Text style={text}>

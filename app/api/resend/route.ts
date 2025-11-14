@@ -9,7 +9,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
-    const { type, email, password, isPasswordReset, origin } =
+    const { type, email, password, username, isPasswordReset, origin } =
       await request.json();
 
     if (!email) {
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
             react: VerificationEmail({
               otp: res.data.properties?.email_otp,
               isPasswordReset: !!isPasswordReset,
+              username,
             }),
           });
         } else {
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
           react: WelcomeEmail({
             userEmail: email,
             dashboardUrl,
+            username,
           }),
         });
         break;
