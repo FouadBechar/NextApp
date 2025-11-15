@@ -16,11 +16,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import PasswordInput from '@/components/ui/password-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
-import EyeIcon from '@/components/icons/eye';
-import EyeOffIcon from '@/components/icons/eye-off';
+// visibility handled by PasswordInput
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
@@ -33,8 +32,7 @@ export function NewPasswordForm() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  // visibility toggles are handled internally by `PasswordInput`
 
   const form = useForm<FormData>({
     resolver: zodResolver(newPasswordSchema),
@@ -144,49 +142,35 @@ export function NewPasswordForm() {
           <FormField
             control={form.control}
             name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>New Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" {...field} />
-                    <button
-                      type="button"
-                      aria-label={showPassword ? 'Hide new password' : 'Show new password'}
-                      onClick={() => setShowPassword((s) => !s)}
-                      className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
-                    >
-                      {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const { ref, ...rest } = field as any;
+              return (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <PasswordInput inputRef={ref} placeholder="••••••••" {...rest} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <FormField
             control={form.control}
             name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm New Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input type={showConfirm ? 'text' : 'password'} placeholder="••••••••" {...field} />
-                    <button
-                      type="button"
-                      aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
-                      onClick={() => setShowConfirm((s) => !s)}
-                      className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
-                    >
-                      {showConfirm ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const { ref, ...rest } = field as any;
+              return (
+                <FormItem>
+                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormControl>
+                    <PasswordInput inputRef={ref} placeholder="••••••••" {...rest} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
