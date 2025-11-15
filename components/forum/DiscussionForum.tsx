@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
+import UserBadge from '@/components/forum/user-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -181,11 +182,14 @@ export default function DiscussionForum(): React.ReactElement {
                     <article
                       key={t.id}
                       className={`p-4 border rounded-md hover:shadow cursor-pointer ${selected?.id === t.id ? 'bg-muted' : ''}`}
-                        onClick={() => openThread(t)}
-                        role="button"
+                      onClick={() => openThread(t)}
+                      role="button"
                     >
                       <h3 className="font-semibold">{t.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{t.author_display ?? 'Anonymous'} • {t.created_at ? new Date(t.created_at).toLocaleString() : ''}</p>
+                      <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                        <UserBadge displayName={t.author_display} userId={t.author_id} size="sm" />
+                        <span className="text-sm text-muted-foreground">{t.created_at ? new Date(t.created_at).toLocaleString() : ''}</span>
+                      </div>
                       <div className="text-sm text-muted-foreground mt-2">{t.content ? (t.content.length > 180 ? t.content.slice(0, 180) + '…' : t.content) : ''}</div>
                       <div className="mt-2 text-xs text-muted-foreground">{(t.reply_count || 0)} replies</div>
                     </article>
@@ -240,7 +244,10 @@ export default function DiscussionForum(): React.ReactElement {
               {posts.length ? (
                 posts.map((p) => (
                   <div key={p.id} className="p-3 border rounded">
-                    <div className="text-sm text-muted-foreground">{p.author_display ?? 'Anonymous'} • {p.created_at ? new Date(p.created_at).toLocaleString() : ''}</div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <UserBadge displayName={p.author_display} userId={p.author_id} size="sm" />
+                      <span>{p.created_at ? new Date(p.created_at).toLocaleString() : ''}</span>
+                    </div>
                     <div className="mt-2">{p.content}</div>
                   </div>
                 ))

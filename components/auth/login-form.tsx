@@ -15,11 +15,12 @@ import { login } from "@/lib/utils/auth-helpers";
 import { loginSchema } from "@/lib/utils/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
+import PasswordInput from '@/components/ui/password-input';
 import { executeRecaptchaSafe } from "@/lib/utils/recaptcha";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { z } from "zod";
 
 type FormData = z.infer<typeof loginSchema>;
@@ -29,6 +30,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const router = useRouter();
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(loginSchema),
@@ -213,15 +215,18 @@ export function LoginForm() {
           <FormField
             control={form.control}
             name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const { ref, ...rest } = field as any;
+              return (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <PasswordInput inputRef={ref} placeholder="••••••••" {...rest} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <div className="text-right">

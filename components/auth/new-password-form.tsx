@@ -19,6 +19,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
+import EyeIcon from '@/components/icons/eye';
+import EyeOffIcon from '@/components/icons/eye-off';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
@@ -30,6 +32,9 @@ export function NewPasswordForm() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(newPasswordSchema),
@@ -143,7 +148,17 @@ export function NewPasswordForm() {
               <FormItem>
                 <FormLabel>New Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
+                  <div className="relative">
+                    <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" {...field} />
+                    <button
+                      type="button"
+                      aria-label={showPassword ? 'Hide new password' : 'Show new password'}
+                      onClick={() => setShowPassword((s) => !s)}
+                      className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -157,7 +172,17 @@ export function NewPasswordForm() {
               <FormItem>
                 <FormLabel>Confirm New Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
+                  <div className="relative">
+                    <Input type={showConfirm ? 'text' : 'password'} placeholder="••••••••" {...field} />
+                    <button
+                      type="button"
+                      aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
+                      onClick={() => setShowConfirm((s) => !s)}
+                      className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
+                    >
+                      {showConfirm ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

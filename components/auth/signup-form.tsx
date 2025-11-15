@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -9,16 +9,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { signupSchema } from '@/lib/utils/validation';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { signupSchema } from "@/lib/utils/validation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import EyeIcon from "@/components/icons/eye";
+import EyeOffIcon from "@/components/icons/eye-off";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 type FormData = z.infer<typeof signupSchema>;
 
@@ -27,17 +29,22 @@ export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const form = useForm<FormData>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     },
   });
 
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null
+  );
   const [checkingUsername, setCheckingUsername] = useState(false);
 
   // Debounced username availability check
@@ -51,7 +58,9 @@ export function SignupForm() {
     setCheckingUsername(true);
     usernameTimer = window.setTimeout(async () => {
       try {
-        const res = await fetch(`/api/auth/username-availability?username=${encodeURIComponent(value)}`);
+        const res = await fetch(
+          `/api/auth/username-availability?username=${encodeURIComponent(value)}`
+        );
         const json = await res.json();
         setUsernameAvailable(!!json.available);
       } catch (e) {
@@ -67,31 +76,31 @@ export function SignupForm() {
     setError(null);
 
     try {
-      sessionStorage.setItem('verificationEmail', data.email);
+      sessionStorage.setItem("verificationEmail", data.email);
       // persist chosen username across verification step
       if ((data as any).username) {
-        sessionStorage.setItem('verificationUsername', (data as any).username);
+        sessionStorage.setItem("verificationUsername", (data as any).username);
       }
 
-      await fetch('/api/resend', {
-        method: 'POST',
+      await fetch("/api/resend", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          type: 'verification',
+          type: "verification",
           email: data.email,
           password: data.password,
           username: (data as any).username,
         }),
       });
 
-      router.push('/auth/verify');
+      router.push("/auth/verify");
     } catch (error) {
       setError(
         error instanceof Error
           ? error.message
-          : 'An error occurred during signup'
+          : "An error occurred during signup"
       );
     } finally {
       setIsLoading(false);
@@ -114,6 +123,19 @@ export function SignupForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="you@example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={form.control}
             name="username"
@@ -143,21 +165,6 @@ export function SignupForm() {
               </FormItem>
             )}
           />
-
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="you@example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <FormField
             control={form.control}
             name="password"
@@ -165,7 +172,27 @@ export function SignupForm() {
               <FormItem>
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                      onClick={() => setShowPassword((s) => !s)}
+                      className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
+                    >
+                      {showPassword ? (
+                        <EyeOffIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -179,7 +206,29 @@ export function SignupForm() {
               <FormItem>
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
+                  <div className="relative">
+                    <Input
+                      type={showConfirm ? "text" : "password"}
+                      placeholder="••••••••"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      aria-label={
+                        showConfirm
+                          ? "Hide confirm password"
+                          : "Show confirm password"
+                      }
+                      onClick={() => setShowConfirm((s) => !s)}
+                      className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
+                    >
+                      {showConfirm ? (
+                        <EyeOffIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -187,13 +236,13 @@ export function SignupForm() {
           />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Creating account...' : 'Create account'}
+            {isLoading ? "Creating account..." : "Create account"}
           </Button>
         </form>
       </Form>
 
       <div className="text-center text-sm">
-        Already have an account?{' '}
+        Already have an account?{" "}
         <Link href="/auth/login" className="text-blue-600 hover:underline">
           Sign in
         </Link>

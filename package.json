@@ -19,6 +19,7 @@
     "test:avatar:local": "node ./scripts/test-avatar-sharp.js"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-label": "^2.1.7",

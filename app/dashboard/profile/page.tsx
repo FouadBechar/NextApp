@@ -13,6 +13,8 @@ import { createClient } from '@/utils/supabase/client';
 import { login as authLogin, updatePassword as authUpdatePassword } from '@/lib/utils/auth-helpers';
 import { User } from '@supabase/supabase-js';
 import { motion } from 'framer-motion';
+import EyeIcon from '@/components/icons/eye';
+import EyeOffIcon from '@/components/icons/eye-off';
 import { PlaceholderChart } from '@/components/dashboard/placeholder-chart';
 import ActivityChart from '@/components/dashboard/activity-chart';
 import Modal from '@/components/ui/modal';
@@ -397,7 +399,11 @@ export default function ProfilePage() {
                       onClick={() => setShowCurrent((s) => !s)}
                       className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
                     >
-                      {showCurrent ? '🙈' : '👁️'}
+                      {showCurrent ? (
+                        <EyeOffIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -412,7 +418,11 @@ export default function ProfilePage() {
                       onClick={() => setShowNew((s) => !s)}
                       className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
                     >
-                      {showNew ? '🙈' : '👁️'}
+                      {showNew ? (
+                        <EyeOffIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                   <div className="text-sm text-muted-foreground">Password must be at least 8 characters and include letters, numbers, and a special character.</div>
@@ -428,7 +438,11 @@ export default function ProfilePage() {
                       onClick={() => setShowConfirm((s) => !s)}
                       className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
                     >
-                      {showConfirm ? '🙈' : '👁️'}
+                      {showConfirm ? (
+                        <EyeOffIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                 </div>
