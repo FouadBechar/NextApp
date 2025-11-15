@@ -14,8 +14,7 @@ import { Input } from "@/components/ui/input";
 import { signupSchema } from "@/lib/utils/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import EyeIcon from "@/components/icons/eye";
-import EyeOffIcon from "@/components/icons/eye-off";
+import PasswordInput from '@/components/ui/password-input';
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,8 +28,7 @@ export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  // visibility toggle is handled by `PasswordInput`
 
   const form = useForm<FormData>({
     resolver: zodResolver(signupSchema),
@@ -168,71 +166,35 @@ export function SignupForm() {
           <FormField
             control={form.control}
             name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      {...field}
-                    />
-                    <button
-                      type="button"
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
-                      onClick={() => setShowPassword((s) => !s)}
-                      className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
-                    >
-                      {showPassword ? (
-                        <EyeOffIcon className="h-5 w-5" />
-                      ) : (
-                        <EyeIcon className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const { ref, ...rest } = field as any;
+              return (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <PasswordInput inputRef={ref} placeholder="••••••••" {...rest} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <FormField
             control={form.control}
             name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showConfirm ? "text" : "password"}
-                      placeholder="••••••••"
-                      {...field}
-                    />
-                    <button
-                      type="button"
-                      aria-label={
-                        showConfirm
-                          ? "Hide confirm password"
-                          : "Show confirm password"
-                      }
-                      onClick={() => setShowConfirm((s) => !s)}
-                      className="absolute inset-y-0 right-2 flex items-center px-2 text-sm text-muted-foreground"
-                    >
-                      {showConfirm ? (
-                        <EyeOffIcon className="h-5 w-5" />
-                      ) : (
-                        <EyeIcon className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const { ref, ...rest } = field as any;
+              return (
+                <FormItem>
+                  <FormLabel>Confirm Password</FormLabel>
+                  <FormControl>
+                    <PasswordInput inputRef={ref} placeholder="••••••••" {...rest} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
