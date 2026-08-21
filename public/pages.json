@@ -1,0 +1,7 @@
+[
+  { "title": "Home", "url": "/" },
+  { "title": "Login", "url": "/auth/login" },
+  { "title": "Signup", "url": "/auth/signup" },
+  { "title": "Privacy", "url": "/privacy" },
+  { "title": "Reset Password", "url": "/auth/reset-password" }
+]

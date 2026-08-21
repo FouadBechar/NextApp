@@ -1,0 +1,53 @@
+{
+  "name": "fouad-next-sitemap-gen",
+  "version": "1.0.3",
+  "description": "Simple CLI to generate clean sitemap.xml for Next.js apps",
+  "author": "Fouad",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "nextjs",
+    "next",
+    "sitemap",
+    "seo",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FouadBechar/NextApp.git",
+    "directory": "tools/sitemap-cli"
+  },
+  "homepage": "https://github.com/FouadBechar/NextApp/tree/main/tools/sitemap-cli",
+  "bugs": {
+    "url": "https://github.com/FouadBechar/NextApp/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "cli",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "sitemap.config.example.json"
+  ],
+  "exports": {
+    ".": "./scripts/generate-sitemap.mjs"
+  },
+  "bin": {
+    "next-sitemap-gen": "cli/index.mjs"
+  },
+  "scripts": {
+    "help": "node ./cli/index.mjs --help",
+    "test": "node ./tests/run-tests.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@next/env": "^16.1.6",
+    "chalk": "^5.6.2",
+    "ora": "^9.3.0",
+    "sitemap": "^8.0.0"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "fouad-env-guardian",
+  "version": "0.1.2",
+  "description": "CLI tool to scan projects for unsafe .env practices and likely secret exposure mistakes.",
+  "author": "Fouad",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "env",
+    "dotenv",
+    "security",
+    "secrets",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FouadBechar/NextApp.git",
+    "directory": "tools/env-guardian"
+  },
+  "homepage": "https://github.com/FouadBechar/NextApp/tree/main/tools/env-guardian",
+  "bugs": {
+    "url": "https://github.com/FouadBechar/NextApp/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "cli",
+    "core",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "env-guardian": "cli/index.mjs"
+  },
+  "scripts": {
+    "help": "node ./cli/index.mjs --help",
+    "test": "node ./tests/run-tests.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2"
+  }
+}

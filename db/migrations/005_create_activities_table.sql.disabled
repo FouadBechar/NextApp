@@ -1,0 +1,3 @@
+-- Migration disabled: original activities table creation is in `scripts/migrations/2025-11-02-create-activities-table.sql`.
+-- This file was renamed to keep history but prevent duplicate create migrations.
+-- Created: Backup copy of the original repository script. Do not re-enable unless standardizing migration directories.

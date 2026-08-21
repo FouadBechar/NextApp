@@ -1,0 +1,22 @@
+{
+  "site": "https://example.com",
+  "input": "public/pages.json",
+  "outDir": "public",
+  "ignoreRoutes": [
+    "/auth",
+    "/api",
+    "/admin",
+    "/_",
+    "/dashboard"
+  ],
+  "defaults": {
+    "changefreq": "weekly",
+    "priority": 0.7
+  },
+  "rootEntry": {
+    "enabled": true,
+    "changefreq": "weekly",
+    "priority": 1,
+    "lastmod": "auto"
+  }
+}
