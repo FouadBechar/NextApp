@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 
 declare global {
   interface Window {
@@ -18,10 +18,15 @@ const logo = "/assets/incon01.png";
 
 export default function NavBar() {
   const { isTyping } = useTyping();
+  const navRef = useRef<HTMLElement>(null);
+
   useEffect(() => {
-    const $ = (s: string, ctx: Document | Element = document) =>
+    const navRoot = navRef.current;
+    if (!navRoot) return;
+
+    const $ = (s: string, ctx: Element = navRoot) =>
       ctx.querySelector(s);
-    const $$ = (s: string, ctx: Document | Element = document) =>
+    const $$ = (s: string, ctx: Element = navRoot) =>
       Array.from(ctx.querySelectorAll(s));
     function debounce<T extends (...args: any[]) => void>(fn: T, wait = 80) {
       let t: number | undefined;
@@ -450,7 +455,7 @@ export default function NavBar() {
 
       if (box && input && target && !box.contains(target) && target !== input) {
         box.style.display = "none";
-        box.setAttribute("aria-expanded", "false");
+        input?.setAttribute("aria-expanded", "false");
         if (announcer) announcer.textContent = "";
       }
     });
@@ -568,7 +573,7 @@ export default function NavBar() {
       active = -1;
       if (!items || !items.length) {
         box.style.display = "none";
-        box.setAttribute("aria-expanded", "false");
+        input?.setAttribute("aria-expanded", "false");
         if (announcer) announcer.textContent = "";
         return;
       }
@@ -610,7 +615,7 @@ export default function NavBar() {
 
       if (box) {
         box.style.display = "block";
-        box.setAttribute("aria-expanded", "true");
+        input?.setAttribute("aria-expanded", "true");
         box.setAttribute("aria-activedescendant", "");
       }
       if (announcer)
@@ -625,7 +630,7 @@ export default function NavBar() {
       const q = (value || "").trim();
       if (!q) {
         box.style.display = "none";
-        box.setAttribute("aria-expanded", "false");
+        input?.setAttribute("aria-expanded", "false");
         if (announcer) announcer.textContent = "";
         return;
       }
@@ -692,7 +697,7 @@ export default function NavBar() {
       if (input) input.value = item.text;
       if (box) {
         box.style.display = "none";
-        box.setAttribute("aria-expanded", "false");
+        input?.setAttribute("aria-expanded", "false");
       }
       addHistory(item.text);
 
@@ -802,7 +807,7 @@ export default function NavBar() {
             }
           } else if (e.key === "Escape") {
             if (box) box.style.display = "none";
-            if (box) box.setAttribute("aria-expanded", "false");
+            input?.setAttribute("aria-expanded", "false");
             if (announcer) announcer.textContent = "";
           }
         },
@@ -816,12 +821,12 @@ export default function NavBar() {
       if (active > -1) {
         const el = items[active] as HTMLElement;
         el.setAttribute("aria-selected", "true");
-        if (box) box.setAttribute("aria-activedescendant", el.id);
+        input?.setAttribute("aria-activedescendant", el.id);
         el.scrollIntoView({ block: "nearest" });
         if (announcer)
           announcer.textContent = (el.textContent || "") + " selected";
       } else {
-        if (box) box.setAttribute("aria-activedescendant", "");
+        input?.setAttribute("aria-activedescendant", "");
         if (announcer) announcer.textContent = "";
       }
     }
@@ -896,26 +901,6 @@ export default function NavBar() {
       else setMicUIState("prompt");
     }
 
-    if (micBtn) {
-      micBtn.addEventListener("click", async () => {
-        const current = micBtn.classList.contains("mic-granted");
-        if (current) {
-          return;
-        }
-        setMicUIState("prompt");
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
-          setMicUIState("granted");
-          stream.getTracks().forEach((t) => t.stop());
-        } catch (err) {
-          setMicUIState("denied");
-          console.warn("getUserMedia error:", err);
-        }
-      });
-    }
-
     (async function initMicState() {
       const ok = await probePermissionAPI();
       if (!ok) setMicUIState("prompt");
@@ -927,13 +912,22 @@ export default function NavBar() {
       recognition.lang = "en";
       recognition.interimResults = false;
 
-      micBtn?.addEventListener("click", () => {
+      micBtn?.addEventListener("click", async () => {
         if (micBtn?.classList.contains("listening")) {
           recognition.stop();
           micBtn.classList.remove("listening");
-        } else {
+          return;
+        }
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach((track) => track.stop());
+          setMicUIState("granted");
           recognition.start();
           micBtn?.classList.add("listening");
+        } catch (err) {
+          setMicUIState("denied");
+          console.warn("Voice search could not start:", err);
         }
       });
 
@@ -946,6 +940,9 @@ export default function NavBar() {
       });
 
       recognition.addEventListener("end", () => {
+        micBtn?.classList.remove("listening");
+      });
+      recognition.addEventListener("error", () => {
         micBtn?.classList.remove("listening");
       });
     } else {
@@ -971,6 +968,10 @@ export default function NavBar() {
     };
 
     return () => {
+      ro.disconnect();
+      document.removeEventListener("keydown", handleKeydown);
+      document.body.style.overflow = "";
+      if (googlePending) document.getElementById(googlePending)?.remove();
       try {
         if (window.__navRefactor) delete window.__navRefactor;
       } catch (err) {
@@ -986,7 +987,7 @@ export default function NavBar() {
   }, []);
 
   return (
-    <nav role="navigation" aria-label="Main navigation">
+    <nav ref={navRef} role="navigation" aria-label="Main navigation">
       <div className="nav-inner">
         <div className="logo" aria-label="Logos">
           <a href="/" aria-label="FouadBechar">
@@ -1323,8 +1324,11 @@ export default function NavBar() {
                 id="searchInput"
                 placeholder="Search..."
                 aria-label="Search"
+                role="combobox"
                 aria-autocomplete="list"
                 aria-controls="suggestions"
+                aria-expanded="false"
+                aria-activedescendant=""
                 autoComplete="off"
               />
               <button
@@ -1396,9 +1400,6 @@ export default function NavBar() {
               className="results-dropdown"
               role="listbox"
               aria-label="Search suggestions"
-              aria-expanded="false"
-              aria-activedescendant=""
-              tabIndex={0}
             ></div>
             <div
               id="sr-announcer"
