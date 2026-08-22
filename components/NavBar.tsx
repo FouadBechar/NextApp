@@ -51,6 +51,7 @@ export default function NavBar() {
     const searchBox = $("#searchBox") as HTMLElement | null;
     const searchInput = $("#searchInput") as HTMLInputElement | null;
     const clearBtn = $("#clearBtn") as HTMLElement | null;
+    const micStatus = $("#micStatus") as HTMLElement | null;
     const navListItems = (
       $$(".nav-menu > ul > li").length
         ? $$(".nav-menu > ul > li")
@@ -67,7 +68,7 @@ export default function NavBar() {
     const micBtn = $("#micBtn") as HTMLButtonElement | null;
     if (micBtn) {
       micBtn.setAttribute("aria-live", "polite");
-      micBtn.setAttribute("aria-label", "Listening...");
+      micBtn.setAttribute("aria-label", "Voice search");
     }
 
     let ddCache = new WeakMap<Element, number>();
@@ -881,70 +882,101 @@ export default function NavBar() {
       }
     }
 
-    async function probePermissionAPI() {
-      if (!navigator.permissions) return false;
-      try {
-        const status = await navigator.permissions.query({
-          name: "microphone",
-        });
-        handlePermissionState(status.state);
-        status.onchange = () => handlePermissionState(status.state);
-        return true;
-      } catch (err) {
-        return false;
+    function setMicStatus(message: string) {
+      if (micStatus) micStatus.textContent = message;
+      if (micBtn) {
+        micBtn.title = message || "Voice search";
+        micBtn.setAttribute("aria-label", message || "Voice search");
       }
     }
 
-    function handlePermissionState(state: any) {
-      if (state === "granted") setMicUIState("granted");
-      else if (state === "denied") setMicUIState("denied");
-      else setMicUIState("prompt");
-    }
-
-    (async function initMicState() {
-      const ok = await probePermissionAPI();
-      if (!ok) setMicUIState("prompt");
-    })();
+    let cleanupVoiceSearch = () => {};
 
     if (SpeechRecognitionCtor) {
       const RecognitionCtor = SpeechRecognitionCtor;
       const recognition = new RecognitionCtor();
-      recognition.lang = "en";
+      recognition.lang = navigator.language || "en-US";
       recognition.interimResults = false;
+      const listeningTimeoutMs = 10_000;
+      let listeningTimeout: number | undefined;
+      let receivedResult = false;
 
-      micBtn?.addEventListener("click", async () => {
+      function clearListeningTimeout() {
+        if (listeningTimeout) window.clearTimeout(listeningTimeout);
+        listeningTimeout = undefined;
+      }
+
+      function stopListening(message: string) {
+        clearListeningTimeout();
+        recognition.stop();
+        micBtn?.classList.remove("listening");
+        setMicStatus(message);
+      }
+
+      micBtn?.addEventListener("click", () => {
         if (micBtn?.classList.contains("listening")) {
-          recognition.stop();
-          micBtn.classList.remove("listening");
+          stopListening("Voice search stopped");
           return;
         }
 
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          stream.getTracks().forEach((track) => track.stop());
-          setMicUIState("granted");
+          receivedResult = false;
           recognition.start();
           micBtn?.classList.add("listening");
+          setMicUIState("prompt");
+          setMicStatus("Listening… click again to stop");
+          listeningTimeout = window.setTimeout(() => {
+            if (micBtn?.classList.contains("listening")) {
+              stopListening("Voice search timed out");
+            }
+          }, listeningTimeoutMs);
         } catch (err) {
-          setMicUIState("denied");
+          setMicUIState("prompt");
+          setMicStatus("Voice search is already starting");
           console.warn("Voice search could not start:", err);
         }
+      });
+
+      recognition.addEventListener("start", () => {
+        setMicUIState("granted");
+        setMicStatus("Listening… click again to stop");
       });
 
       recognition.addEventListener("result", (e: SpeechRecognitionEvent) => {
         const transcript = e.results?.[0]?.[0]?.transcript;
         if (transcript && searchInput) {
+          receivedResult = true;
           (searchInput as HTMLInputElement).value = transcript;
           (searchInput as HTMLInputElement).dispatchEvent(new Event("input"));
+          setMicStatus("Search ready");
         }
       });
 
       recognition.addEventListener("end", () => {
+        clearListeningTimeout();
         micBtn?.classList.remove("listening");
+        if (!receivedResult) setMicStatus("Voice search stopped");
       });
-      recognition.addEventListener("error", () => {
+      recognition.addEventListener("error", (event) => {
+        clearListeningTimeout();
         micBtn?.classList.remove("listening");
+        const error = (event as Event & { error?: string }).error;
+        const message =
+          error === "not-allowed" || error === "service-not-allowed"
+            ? "Microphone permission was denied"
+            : error === "no-speech"
+              ? "No speech was detected"
+              : error === "network"
+                ? "Voice search needs a network connection"
+                : "Voice search could not start";
+        setMicUIState(error?.includes("not-allowed") ? "denied" : "prompt");
+        setMicStatus(message);
       });
+
+      cleanupVoiceSearch = () => {
+        clearListeningTimeout();
+        recognition.stop();
+      };
     } else {
       if (micBtn) {
         micBtn.innerHTML =
@@ -969,6 +1001,7 @@ export default function NavBar() {
 
     return () => {
       ro.disconnect();
+      cleanupVoiceSearch();
       document.removeEventListener("keydown", handleKeydown);
       document.body.style.overflow = "";
       if (googlePending) document.getElementById(googlePending)?.remove();
@@ -1394,6 +1427,8 @@ export default function NavBar() {
                 </svg>
               </button>
             </form>
+
+            <p id="micStatus" className="mic-status" role="status" aria-live="polite"></p>
 
             <div
               id="suggestions"

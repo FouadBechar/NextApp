@@ -337,6 +337,14 @@ button {
   animation: pulse 1s infinite;
 }
 
+.mic-status {
+  min-height: 1.25rem;
+  margin: 0.35rem 0 0;
+  color: var(--result-color);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
 @keyframes pulse {
   0% {
     opacity: 1;
