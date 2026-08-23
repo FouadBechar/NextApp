@@ -348,9 +348,12 @@ button {
   padding: 0.45rem 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0.5rem;
-  background: rgba(15, 23, 42, 0.96);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.28);
-  color: #f8fafc;
+  background: linear-gradient(90deg,
+      var(--nav-bg-1),
+      var(--nav-bg-2),
+      var(--accent));
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
+  color: var(--text);
   font-size: 0.75rem;
   line-height: 1.25rem;
   opacity: 0;
