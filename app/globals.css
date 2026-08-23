@@ -339,8 +339,8 @@ button {
 
 .mic-status {
   position: absolute;
-  top: 50%;
-  left: calc(100% + 0.75rem);
+  top: calc(100% + 0.5rem);
+  left: 0;
   z-index: 1300;
   width: max-content;
   max-width: min(18rem, calc(100vw - 2rem));
@@ -355,25 +355,13 @@ button {
   line-height: 1.25rem;
   opacity: 0;
   pointer-events: none;
-  transform: translate(-0.5rem, -50%);
+  transform: translateY(-0.5rem);
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
 .mic-status.is-visible {
   opacity: 1;
-  transform: translate(0, -50%);
-}
-
-@media (max-width: 767px) {
-  .mic-status {
-    top: calc(100% + 0.5rem);
-    left: 0;
-    transform: translateY(-0.5rem);
-  }
-
-  .mic-status.is-visible {
-    transform: translateY(0);
-  }
+  transform: translateY(0);
 }
 
 @keyframes pulse {
