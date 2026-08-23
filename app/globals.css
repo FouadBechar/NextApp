@@ -338,11 +338,42 @@ button {
 }
 
 .mic-status {
-  min-height: 1.25rem;
-  margin: 0.35rem 0 0;
-  color: var(--result-color);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 0.75rem);
+  z-index: 1300;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 2rem));
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.28);
+  color: #f8fafc;
   font-size: 0.75rem;
   line-height: 1.25rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-0.5rem, -50%);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.mic-status.is-visible {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+@media (max-width: 767px) {
+  .mic-status {
+    top: calc(100% + 0.5rem);
+    left: 0;
+    transform: translateY(-0.5rem);
+  }
+
+  .mic-status.is-visible {
+    transform: translateY(0);
+  }
 }
 
 @keyframes pulse {

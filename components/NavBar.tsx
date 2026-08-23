@@ -882,11 +882,20 @@ export default function NavBar() {
       }
     }
 
+    let micStatusTimeout: number | undefined;
+
     function setMicStatus(message: string) {
-      if (micStatus) micStatus.textContent = message;
+      if (micStatusTimeout) window.clearTimeout(micStatusTimeout);
+      if (micStatus) {
+        micStatus.textContent = message;
+        micStatus.classList.toggle("is-visible", Boolean(message));
+      }
       if (micBtn) {
         micBtn.title = message || "Voice search";
         micBtn.setAttribute("aria-label", message || "Voice search");
+      }
+      if (message) {
+        micStatusTimeout = window.setTimeout(() => setMicStatus(""), 4_000);
       }
     }
 
@@ -1002,6 +1011,7 @@ export default function NavBar() {
     return () => {
       ro.disconnect();
       cleanupVoiceSearch();
+      if (micStatusTimeout) window.clearTimeout(micStatusTimeout);
       document.removeEventListener("keydown", handleKeydown);
       document.body.style.overflow = "";
       if (googlePending) document.getElementById(googlePending)?.remove();
