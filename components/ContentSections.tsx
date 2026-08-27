@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import ChatWidget from "./ChatWidget";
 import VideoShow from "./Videoshow";
 import TextDq from "./TextDq";
+import WeatherWidget from "./WeatherWidget";
 import Contact from "./Contact";
 import CookieConsent from "./CookieConsent";
 import SafeImage from "./ui/SafeImage";
@@ -380,7 +381,8 @@ export default function ContentSections() {
 
       <VideoShow />
       <TextDq />
-
+      <WeatherWidget />
+	  
       <div className="f13">
         <div id="text1" className="ff13">
           {section1}
