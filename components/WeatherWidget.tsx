@@ -21,9 +21,9 @@ import type { WeatherData, WeatherWidgetProps } from "@/types/weather";
 import { getWeatherPresentation } from "@/lib/weather";
 import styles from "./WeatherWidget.module.css";
 
-const DEFAULT_CITY = "Algiers";
-const DEFAULT_LATITUDE = 36.7538;
-const DEFAULT_LONGITUDE = 3.0588;
+const DEFAULT_CITY = "Washington, D.C.";
+const DEFAULT_LATITUDE = 38.9072;
+const DEFAULT_LONGITUDE = -77.0369;
 
 function WeatherIcon({ name, size = 46 }: { name: ReturnType<typeof getWeatherPresentation>["icon"]; size?: number }) {
   const commonProps = { size, strokeWidth: 1.8, "aria-hidden": true } as const;
