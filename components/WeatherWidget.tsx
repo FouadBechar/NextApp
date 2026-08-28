@@ -25,8 +25,18 @@ const DEFAULT_CITY = "Washington, D.C.";
 const DEFAULT_LATITUDE = 38.9072;
 const DEFAULT_LONGITUDE = -77.0369;
 
-function WeatherIcon({ name, size = 46 }: { name: ReturnType<typeof getWeatherPresentation>["icon"]; size?: number }) {
-  const commonProps = { size, strokeWidth: 1.8, "aria-hidden": true } as const;
+function WeatherIcon({
+  name,
+  size = 46,
+}: {
+  name: ReturnType<typeof getWeatherPresentation>["icon"];
+  size?: number;
+}) {
+  const commonProps = {
+    size,
+    strokeWidth: 1.8,
+    "aria-hidden": true,
+  } as const;
 
   switch (name) {
     case "sun":
@@ -52,6 +62,60 @@ function WeatherIcon({ name, size = 46 }: { name: ReturnType<typeof getWeatherPr
   }
 }
 
+/**
+ * Converts latitude/longitude into a human-readable place name.
+ *
+ * BigDataCloud's free reverse-geocoding endpoint is used directly
+ * from the client and does not require an API key.
+ */
+async function getLocationName(
+  latitude: number,
+  longitude: number,
+  locale: string,
+): Promise<string | null> {
+  try {
+    const language = locale.split("-")[0] || "en";
+
+    const params = new URLSearchParams({
+      latitude: String(latitude),
+      longitude: String(longitude),
+      localityLanguage: language,
+    });
+
+    const response = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?${params.toString()}`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Reverse geocoding failed with status ${response.status}.`,
+      );
+    }
+
+    const data = (await response.json()) as {
+      city?: string;
+      locality?: string;
+      localityName?: string;
+      principalSubdivision?: string;
+      countryName?: string;
+    };
+
+    return (
+      data.city ||
+      data.locality ||
+      data.localityName ||
+      data.principalSubdivision ||
+      data.countryName ||
+      null
+    );
+  } catch (error) {
+    console.error("Reverse geocoding error:", error);
+    return null;
+  }
+}
 
 export default function WeatherWidget({
   city = DEFAULT_CITY,
@@ -61,42 +125,72 @@ export default function WeatherWidget({
   enableGeolocation = true,
 }: WeatherWidgetProps) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [currentLocation, setCurrentLocation] = useState({ latitude, longitude });
+  const [currentLocation, setCurrentLocation] = useState({
+    latitude,
+    longitude,
+  });
   const [locationLabel, setLocationLabel] = useState(city);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
 
-  const loadWeather = useCallback(async (nextLatitude: number, nextLongitude: number) => {
-    requestControllerRef.current?.abort();
-    const controller = new AbortController();
-    requestControllerRef.current = controller;
-    setLoading(true);
-    setError(null);
+  const loadWeather = useCallback(
+    async (nextLatitude: number, nextLongitude: number) => {
+      requestControllerRef.current?.abort();
 
-    try {
-      const response = await fetch(
-        `/api/weather?lat=${encodeURIComponent(nextLatitude)}&lon=${encodeURIComponent(nextLongitude)}`,
-        { cache: "no-store", signal: controller.signal },
-      );
+      const controller = new AbortController();
+      requestControllerRef.current = controller;
 
-      const payload = (await response.json()) as WeatherData | { error?: string };
+      setLoading(true);
+      setError(null);
 
-      if (!response.ok) {
-        throw new Error("error" in payload && payload.error ? payload.error : "Unable to load weather.");
+      try {
+        const response = await fetch(
+          `/api/weather?lat=${encodeURIComponent(
+            nextLatitude,
+          )}&lon=${encodeURIComponent(nextLongitude)}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        const payload = (await response.json()) as
+          | WeatherData
+          | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error
+              ? payload.error
+              : "Unable to load weather.",
+          );
+        }
+
+        setWeather(payload as WeatherData);
+        setCurrentLocation({
+          latitude: nextLatitude,
+          longitude: nextLongitude,
+        });
+      } catch (requestError) {
+        if (
+          requestError instanceof Error &&
+          requestError.name === "AbortError"
+        ) {
+          return;
+        }
+
+        console.error("WeatherWidget error:", requestError);
+        setError("Weather is temporarily unavailable.");
+      } finally {
+        if (requestControllerRef.current === controller) {
+          setLoading(false);
+        }
       }
-
-      setWeather(payload as WeatherData);
-      setCurrentLocation({ latitude: nextLatitude, longitude: nextLongitude });
-    } catch (requestError) {
-      if (requestError instanceof Error && requestError.name === "AbortError") return;
-      console.error("WeatherWidget error:", requestError);
-      setError("Weather is temporarily unavailable.");
-    } finally {
-      if (requestControllerRef.current === controller) setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     void loadWeather(latitude, longitude);
@@ -110,6 +204,7 @@ export default function WeatherWidget({
 
   const presentation = useMemo(() => {
     if (!weather) return null;
+
     return getWeatherPresentation(weather.weatherCode, weather.isDay);
   }, [weather]);
 
@@ -120,7 +215,8 @@ export default function WeatherWidget({
       return new Intl.DateTimeFormat(locale, {
         hour: "2-digit",
         minute: "2-digit",
-        timeZone: weather.timezone === "auto" ? undefined : weather.timezone,
+        timeZone:
+          weather.timezone === "auto" ? undefined : weather.timezone,
       }).format(new Date(weather.updatedAt));
     } catch {
       return weather.updatedAt;
@@ -128,10 +224,13 @@ export default function WeatherWidget({
   }, [locale, weather?.updatedAt]);
 
   function handleRefresh() {
-    void loadWeather(currentLocation.latitude, currentLocation.longitude);
+    void loadWeather(
+      currentLocation.latitude,
+      currentLocation.longitude,
+    );
   }
 
-  function handleLocate() {
+  async function handleLocate() {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by this browser.");
       return;
@@ -141,13 +240,28 @@ export default function WeatherWidget({
     setError(null);
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocationLabel("Your location");
-        setLocating(false);
-        void loadWeather(position.coords.latitude, position.coords.longitude);
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+          const locationName = await getLocationName(
+            latitude,
+            longitude,
+            locale,
+          );
+
+          setLocationLabel(locationName || "Your location");
+        } catch {
+          setLocationLabel("Your location");
+        } finally {
+          setLocating(false);
+        }
+
+        void loadWeather(latitude, longitude);
       },
       (positionError) => {
         setLocating(false);
+
         setError(
           positionError.code === positionError.PERMISSION_DENIED
             ? "Location permission was denied."
@@ -163,14 +277,22 @@ export default function WeatherWidget({
   }
 
   const cardLabel = weather
-    ? `${locationLabel}: ${Math.round(weather.temperature)} degrees, ${presentation?.label ?? "Current weather"}`
+    ? `${locationLabel}: ${Math.round(
+        weather.temperature,
+      )} degrees, ${
+        presentation?.label ?? "Current weather"
+      }`
     : `Weather for ${locationLabel}`;
 
   return (
-    <section className={styles.weatherWidget} aria-label={cardLabel}>
+    <section
+      className={styles.weatherWidget}
+      aria-label={cardLabel}
+    >
       <div className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Current weather</p>
+
           <h2 className={styles.city}>
             <MapPin size={17} aria-hidden="true" /> {locationLabel}
           </h2>
@@ -186,9 +308,11 @@ export default function WeatherWidget({
               title="Use your current location"
             >
               <LocateFixed size={15} aria-hidden="true" />
+
               {locating ? "Locating…" : "My location"}
             </button>
           ) : null}
+
           <button
             className={styles.actionButton}
             type="button"
@@ -197,65 +321,125 @@ export default function WeatherWidget({
             title="Refresh weather"
             aria-label="Refresh weather"
           >
-            <RefreshCw className={loading ? styles.spin : undefined} size={15} aria-hidden="true" />
-            <span className="visually-hidden">Refresh</span>
+            <RefreshCw
+              className={loading ? styles.spin : undefined}
+              size={15}
+              aria-hidden="true"
+            />
+
+            <span className="visually-hidden">
+              Refresh
+            </span>
           </button>
         </div>
       </div>
 
       {loading && !weather ? (
-        <div className={styles.status} role="status" aria-live="polite">
-          <RefreshCw className={styles.spin} size={28} aria-hidden="true" />
-          <p className={styles.statusText}>Loading weather…</p>
+        <div
+          className={styles.status}
+          role="status"
+          aria-live="polite"
+        >
+          <RefreshCw
+            className={styles.spin}
+            size={28}
+            aria-hidden="true"
+          />
+
+          <p className={styles.statusText}>
+            Loading weather…
+          </p>
         </div>
       ) : error && !weather ? (
-        <div className={`${styles.status} ${styles.error}`} role="alert">
+        <div
+          className={`${styles.status} ${styles.error}`}
+          role="alert"
+        >
           <p className={styles.statusText}>{error}</p>
         </div>
       ) : weather && presentation ? (
         <>
           <div className={styles.content}>
             <div className={styles.temperatureBlock}>
-              <div className={styles.iconWrap} aria-hidden="true">
-                <WeatherIcon name={presentation.icon} />
+              <div
+                className={styles.iconWrap}
+                aria-hidden="true"
+              >
+                <WeatherIcon
+                  name={presentation.icon}
+                />
               </div>
 
               <div>
                 <span className={styles.temperature}>
                   {Math.round(weather.temperature)}
-                  <span className={styles.degree}>°C</span>
+
+                  <span className={styles.degree}>
+                    °C
+                  </span>
                 </span>
-                <p className={styles.condition}>{presentation.label}</p>
+
+                <p className={styles.condition}>
+                  {presentation.label}
+                </p>
+
                 <p className={styles.feelsLike}>
-                  Feels like {Math.round(weather.apparentTemperature)}°C
+                  Feels like{" "}
+                  {Math.round(weather.apparentTemperature)}
+                  °C
                 </p>
               </div>
             </div>
 
             <div className={styles.metrics}>
               <div className={styles.metric}>
-                <span className={styles.metricLabel}>Humidity</span>
+                <span className={styles.metricLabel}>
+                  Humidity
+                </span>
+
                 <span className={styles.metricValue}>
-                  <Droplets size={15} aria-hidden="true" /> {Math.round(weather.relativeHumidity)}%
+                  <Droplets
+                    size={15}
+                    aria-hidden="true"
+                  />{" "}
+                  {Math.round(
+                    weather.relativeHumidity,
+                  )}
+                  %
                 </span>
               </div>
+
               <div className={styles.metric}>
-                <span className={styles.metricLabel}>Wind</span>
+                <span className={styles.metricLabel}>
+                  Wind
+                </span>
+
                 <span className={styles.metricValue}>
-                  <Wind size={15} aria-hidden="true" /> {Math.round(weather.windSpeed)} km/h
+                  <Wind
+                    size={15}
+                    aria-hidden="true"
+                  />{" "}
+                  {Math.round(weather.windSpeed)} km/h
                 </span>
               </div>
             </div>
           </div>
 
           {error ? (
-            <p className={styles.statusText} role="status" aria-live="polite">
+            <p
+              className={styles.statusText}
+              role="status"
+              aria-live="polite"
+            >
               {error}
             </p>
           ) : null}
 
           <div className={styles.footer}>
-            <span>Updated {formattedUpdatedAt}</span>
+            <span>
+              Updated {formattedUpdatedAt}
+            </span>
+
             <a
               className={styles.attribution}
               href="https://open-meteo.com/"
