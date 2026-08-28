@@ -22,6 +22,10 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Weather API error:", error);
 
+    if (error instanceof Error && error.message.startsWith("Invalid ")) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     return NextResponse.json(
       { error: "Unable to load weather data right now." },
       { status: 502 },

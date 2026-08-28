@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Cloud,
   CloudFog,
@@ -66,15 +66,19 @@ export default function WeatherWidget({
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
   const loadWeather = useCallback(async (nextLatitude: number, nextLongitude: number) => {
+    requestControllerRef.current?.abort();
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch(
         `/api/weather?lat=${encodeURIComponent(nextLatitude)}&lon=${encodeURIComponent(nextLongitude)}`,
-        { cache: "no-store" },
+        { cache: "no-store", signal: controller.signal },
       );
 
       const payload = (await response.json()) as WeatherData | { error?: string };
@@ -86,16 +90,23 @@ export default function WeatherWidget({
       setWeather(payload as WeatherData);
       setCurrentLocation({ latitude: nextLatitude, longitude: nextLongitude });
     } catch (requestError) {
+      if (requestError instanceof Error && requestError.name === "AbortError") return;
       console.error("WeatherWidget error:", requestError);
       setError("Weather is temporarily unavailable.");
     } finally {
-      setLoading(false);
+      if (requestControllerRef.current === controller) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void loadWeather(latitude, longitude);
+
+    return () => requestControllerRef.current?.abort();
   }, [latitude, longitude, loadWeather]);
+
+  useEffect(() => {
+    setLocationLabel(city);
+  }, [city]);
 
   const presentation = useMemo(() => {
     if (!weather) return null;
@@ -109,6 +120,7 @@ export default function WeatherWidget({
       return new Intl.DateTimeFormat(locale, {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: weather.timezone === "auto" ? undefined : weather.timezone,
       }).format(new Date(weather.updatedAt));
     } catch {
       return weather.updatedAt;
