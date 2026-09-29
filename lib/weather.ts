@@ -1,4 +1,4 @@
-import type { WeatherData } from "@/types/weather";
+import type { WeatherData, WeatherUnitSystem } from "@/types/weather";
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
 const REQUEST_TIMEOUT_MS = 8_000;
@@ -25,6 +25,7 @@ export function normalizeCoordinates(latitude: number, longitude: number) {
 export async function getCurrentWeather(
   latitude: number,
   longitude: number,
+  unitSystem: WeatherUnitSystem = "metric",
 ): Promise<WeatherData> {
   const coordinates = normalizeCoordinates(latitude, longitude);
 
@@ -39,9 +40,10 @@ export async function getCurrentWeather(
       "weather_code",
       "is_day",
     ].join(","),
-    temperature_unit: "celsius",
-    wind_speed_unit: "kmh",
+    temperature_unit: unitSystem === "imperial" ? "fahrenheit" : "celsius",
+    wind_speed_unit: unitSystem === "imperial" ? "mph" : "kmh",
     timezone: "auto",
+    timeformat: "unixtime",
   });
 
   const controller = new AbortController();
@@ -65,7 +67,7 @@ export async function getCurrentWeather(
       longitude?: number;
       timezone?: string;
       current?: {
-        time?: string;
+        time?: number;
         temperature_2m?: number;
         relative_humidity_2m?: number;
         apparent_temperature?: number;
@@ -79,7 +81,7 @@ export async function getCurrentWeather(
 
     if (
       !current ||
-      typeof current.time !== "string" ||
+      typeof current.time !== "number" ||
       typeof current.temperature_2m !== "number" ||
       typeof current.relative_humidity_2m !== "number" ||
       typeof current.apparent_temperature !== "number" ||
@@ -95,7 +97,7 @@ export async function getCurrentWeather(
       longitude:
         typeof payload.longitude === "number" ? payload.longitude : coordinates.longitude,
       timezone: typeof payload.timezone === "string" ? payload.timezone : "auto",
-      updatedAt: current.time,
+      updatedAt: new Date(current.time * 1_000).toISOString(),
       temperature: current.temperature_2m,
       apparentTemperature: current.apparent_temperature,
       relativeHumidity: current.relative_humidity_2m,

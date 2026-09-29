@@ -11,6 +11,8 @@ export interface WeatherData {
   isDay: boolean;
 }
 
+export type WeatherUnitSystem = "metric" | "imperial";
+
 export interface WeatherApiResponse extends WeatherData {}
 
 export interface WeatherWidgetProps {
@@ -19,4 +21,5 @@ export interface WeatherWidgetProps {
   longitude?: number;
   locale?: string;
   enableGeolocation?: boolean;
+  unitSystem?: WeatherUnitSystem;
 }

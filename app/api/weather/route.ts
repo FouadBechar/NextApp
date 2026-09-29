@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentWeather } from "@/lib/weather";
+import type { WeatherUnitSystem } from "@/types/weather";
 
 const DEFAULT_LATITUDE = 36.7538;
 const DEFAULT_LONGITUDE = 3.0588;
@@ -10,9 +11,11 @@ export async function GET(request: Request) {
 
   const latitude = Number(searchParams.get("lat") ?? DEFAULT_LATITUDE);
   const longitude = Number(searchParams.get("lon") ?? DEFAULT_LONGITUDE);
+  const unitSystem: WeatherUnitSystem =
+    searchParams.get("units") === "imperial" ? "imperial" : "metric";
 
   try {
-    const weather = await getCurrentWeather(latitude, longitude);
+    const weather = await getCurrentWeather(latitude, longitude, unitSystem);
 
     return NextResponse.json(weather, {
       headers: {

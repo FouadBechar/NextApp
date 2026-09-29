@@ -17,7 +17,10 @@ import {
   Sun,
   Wind,
 } from "lucide-react";
-import type { WeatherData, WeatherWidgetProps } from "@/types/weather";
+import type {
+  WeatherData,
+  WeatherWidgetProps,
+} from "@/types/weather";
 import { getWeatherPresentation } from "@/lib/weather";
 import styles from "./WeatherWidget.module.css";
 
@@ -65,8 +68,8 @@ function WeatherIcon({
 /**
  * Converts latitude/longitude into a human-readable place name.
  *
- * BigDataCloud's free reverse-geocoding endpoint is used directly
- * from the client and does not require an API key.
+ * The app's API proxies the reverse-geocoding provider so precise coordinates
+ * are not shared directly from the visitor's browser.
  */
 async function getLocationName(
   latitude: number,
@@ -74,20 +77,15 @@ async function getLocationName(
   locale: string,
 ): Promise<string | null> {
   try {
-    const language = locale.split("-")[0] || "en";
-
     const params = new URLSearchParams({
       latitude: String(latitude),
       longitude: String(longitude),
-      localityLanguage: language,
+      locale,
     });
 
-    const response = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?${params.toString()}`,
-      {
-        cache: "no-store",
-      },
-    );
+    const response = await fetch(`/api/weather/location?${params.toString()}`, {
+      cache: "no-store",
+    });
 
     if (!response.ok) {
       throw new Error(
@@ -95,22 +93,9 @@ async function getLocationName(
       );
     }
 
-    const data = (await response.json()) as {
-      city?: string;
-      locality?: string;
-      localityName?: string;
-      principalSubdivision?: string;
-      countryName?: string;
-    };
+    const data = (await response.json()) as { name?: string | null };
 
-    return (
-      data.city ||
-      data.locality ||
-      data.localityName ||
-      data.principalSubdivision ||
-      data.countryName ||
-      null
-    );
+    return data.name ?? null;
   } catch (error) {
     console.error("Reverse geocoding error:", error);
     return null;
@@ -123,6 +108,7 @@ export default function WeatherWidget({
   longitude = DEFAULT_LONGITUDE,
   locale = "en",
   enableGeolocation = true,
+  unitSystem = "metric",
 }: WeatherWidgetProps) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [currentLocation, setCurrentLocation] = useState({
@@ -149,7 +135,7 @@ export default function WeatherWidget({
         const response = await fetch(
           `/api/weather?lat=${encodeURIComponent(
             nextLatitude,
-          )}&lon=${encodeURIComponent(nextLongitude)}`,
+          )}&lon=${encodeURIComponent(nextLongitude)}&units=${unitSystem}`,
           {
             cache: "no-store",
             signal: controller.signal,
@@ -189,7 +175,7 @@ export default function WeatherWidget({
         }
       }
     },
-    [],
+    [unitSystem],
   );
 
   useEffect(() => {
@@ -221,7 +207,10 @@ export default function WeatherWidget({
     } catch {
       return weather.updatedAt;
     }
-  }, [locale, weather?.updatedAt]);
+  }, [locale, weather?.updatedAt, weather?.timezone]);
+
+  const temperatureUnit = unitSystem === "imperial" ? "°F" : "°C";
+  const windSpeedUnit = unitSystem === "imperial" ? "mph" : "km/h";
 
   function handleRefresh() {
     void loadWeather(
@@ -242,6 +231,12 @@ export default function WeatherWidget({
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        requestControllerRef.current?.abort();
+        setWeather(null);
+        setLocationLabel("Your location");
+        setLocating(false);
+
+        void loadWeather(latitude, longitude);
 
         try {
           const locationName = await getLocationName(
@@ -253,11 +248,7 @@ export default function WeatherWidget({
           setLocationLabel(locationName || "Your location");
         } catch {
           setLocationLabel("Your location");
-        } finally {
-          setLocating(false);
         }
-
-        void loadWeather(latitude, longitude);
       },
       (positionError) => {
         setLocating(false);
@@ -375,7 +366,7 @@ export default function WeatherWidget({
                   {Math.round(weather.temperature)}
 
                   <span className={styles.degree}>
-                    °C
+                    {temperatureUnit}
                   </span>
                 </span>
 
@@ -386,7 +377,7 @@ export default function WeatherWidget({
                 <p className={styles.feelsLike}>
                   Feels like{" "}
                   {Math.round(weather.apparentTemperature)}
-                  °C
+                  {temperatureUnit}
                 </p>
               </div>
             </div>
@@ -419,7 +410,7 @@ export default function WeatherWidget({
                     size={15}
                     aria-hidden="true"
                   />{" "}
-                  {Math.round(weather.windSpeed)} km/h
+                  {Math.round(weather.windSpeed)} {windSpeedUnit}
                 </span>
               </div>
             </div>
