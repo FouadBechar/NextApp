@@ -78,8 +78,8 @@ async function getLocationName(
 ): Promise<string | null> {
   try {
     const params = new URLSearchParams({
-      latitude: String(latitude),
-      longitude: String(longitude),
+      lat: String(latitude),
+      lon: String(longitude),
       locale,
     });
 
