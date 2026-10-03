@@ -4,6 +4,7 @@ import {
   getWeatherPresentation,
   normalizeCoordinates,
 } from "../../lib/weather";
+import { GET as getWeatherLocation } from "../../app/api/weather/location/route";
 
 describe("weather helpers", () => {
   it("normalizes valid coordinates to four decimal places", () => {
@@ -54,6 +55,34 @@ describe("weather helpers", () => {
       expect(requestUrl.searchParams.get("temperature_unit")).toBe("fahrenheit");
       expect(requestUrl.searchParams.get("wind_speed_unit")).toBe("mph");
       expect(requestUrl.searchParams.get("timeformat")).toBe("unixtime");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("prefers a city-level name over its enclosing subdivision", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          city: "Algiers",
+          principalSubdivision: "Algiers Province",
+          countryName: "Algeria",
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await getWeatherLocation(
+        new Request(
+          "https://example.test/api/weather/location?lat=36.7538&lon=3.0588&locale=fr-FR",
+        ),
+      );
+
+      expect(await response.json()).toEqual({ name: "Algiers" });
+
+      const providerUrl = new URL(fetchMock.mock.calls[0]?.[0] as string);
+      expect(providerUrl.searchParams.get("localityLanguage")).toBe("fr");
     } finally {
       vi.unstubAllGlobals();
     }

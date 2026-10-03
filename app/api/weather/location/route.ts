@@ -38,10 +38,10 @@ export async function GET(request: Request) {
       countryName?: string;
     };
     const name =
-      data.principalSubdivision ??
       data.city ??
       data.locality ??
       data.localityName ??
+      data.principalSubdivision ??
       data.countryName ??
       null;
 

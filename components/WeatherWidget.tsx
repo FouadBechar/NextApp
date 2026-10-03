@@ -28,6 +28,128 @@ const DEFAULT_CITY = "Washington, D.C.";
 const DEFAULT_LATITUDE = 38.9072;
 const DEFAULT_LONGITUDE = -77.0369;
 
+type WeatherCopy = {
+  currentWeather: string;
+  myLocation: string;
+  locating: string;
+  useCurrentLocation: string;
+  refresh: string;
+  refreshWeather: string;
+  loadingWeather: string;
+  geolocationUnsupported: string;
+  locationPermissionDenied: string;
+  locationUnavailable: string;
+  weatherUnavailable: string;
+  showingLastReading: string;
+  feelsLike: string;
+  humidity: string;
+  wind: string;
+  observedAt: string;
+  weatherDataBy: string;
+  weatherFor: (location: string) => string;
+  cardLabel: (location: string, temperature: string, condition: string) => string;
+};
+
+const WEATHER_COPY: Record<"en" | "fr" | "ar", WeatherCopy> = {
+  en: {
+    currentWeather: "Current weather",
+    myLocation: "My location",
+    locating: "Locating…",
+    useCurrentLocation: "Use your current location",
+    refresh: "Refresh",
+    refreshWeather: "Refresh weather",
+    loadingWeather: "Loading weather…",
+    geolocationUnsupported: "Geolocation is not supported by this browser.",
+    locationPermissionDenied: "Location permission was denied.",
+    locationUnavailable: "Unable to determine your location.",
+    weatherUnavailable: "Weather is temporarily unavailable.",
+    showingLastReading: "Unable to refresh. Showing the last available reading.",
+    feelsLike: "Feels like",
+    humidity: "Humidity",
+    wind: "Wind",
+    observedAt: "Observed at",
+    weatherDataBy: "Weather data by Open-Meteo",
+    weatherFor: (location) => `Weather for ${location}`,
+    cardLabel: (location, temperature, condition) =>
+      `${location}: ${temperature} degrees, ${condition}`,
+  },
+  fr: {
+    currentWeather: "Météo actuelle",
+    myLocation: "Ma position",
+    locating: "Localisation…",
+    useCurrentLocation: "Utiliser votre position actuelle",
+    refresh: "Actualiser",
+    refreshWeather: "Actualiser la météo",
+    loadingWeather: "Chargement de la météo…",
+    geolocationUnsupported: "La géolocalisation n’est pas prise en charge par ce navigateur.",
+    locationPermissionDenied: "L’autorisation de localisation a été refusée.",
+    locationUnavailable: "Impossible de déterminer votre position.",
+    weatherUnavailable: "La météo est temporairement indisponible.",
+    showingLastReading: "Actualisation impossible. Affichage de la dernière donnée disponible.",
+    feelsLike: "Ressenti",
+    humidity: "Humidité",
+    wind: "Vent",
+    observedAt: "Observé à",
+    weatherDataBy: "Données météo par Open-Meteo",
+    weatherFor: (location) => `Météo pour ${location}`,
+    cardLabel: (location, temperature, condition) =>
+      `${location} : ${temperature} degrés, ${condition}`,
+  },
+  ar: {
+    currentWeather: "الطقس الحالي",
+    myLocation: "موقعي",
+    locating: "جارٍ تحديد الموقع…",
+    useCurrentLocation: "استخدام موقعك الحالي",
+    refresh: "تحديث",
+    refreshWeather: "تحديث الطقس",
+    loadingWeather: "جارٍ تحميل الطقس…",
+    geolocationUnsupported: "تحديد الموقع الجغرافي غير مدعوم في هذا المتصفح.",
+    locationPermissionDenied: "تم رفض إذن تحديد الموقع.",
+    locationUnavailable: "تعذر تحديد موقعك.",
+    weatherUnavailable: "بيانات الطقس غير متاحة مؤقتًا.",
+    showingLastReading: "تعذر التحديث. يتم عرض آخر قراءة متاحة.",
+    feelsLike: "المحسوس",
+    humidity: "الرطوبة",
+    wind: "الرياح",
+    observedAt: "وقت الرصد",
+    weatherDataBy: "بيانات الطقس من Open-Meteo",
+    weatherFor: (location) => `الطقس في ${location}`,
+    cardLabel: (location, temperature, condition) =>
+      `${location}: ${temperature} درجة، ${condition}`,
+  },
+};
+
+const CONDITION_COPY: Record<"en" | "fr" | "ar", Record<string, string>> = {
+  en: {},
+  fr: {
+    "Clear sky": "Ciel dégagé",
+    "Partly cloudy": "Partiellement nuageux",
+    Overcast: "Couvert",
+    Foggy: "Brumeux",
+    Drizzle: "Bruine",
+    Rain: "Pluie",
+    Snow: "Neige",
+    Thunderstorm: "Orage",
+    "Unknown conditions": "Conditions inconnues",
+  },
+  ar: {
+    "Clear sky": "سماء صافية",
+    "Partly cloudy": "غائم جزئيًا",
+    Overcast: "غائم",
+    Foggy: "ضبابي",
+    Drizzle: "رذاذ",
+    Rain: "مطر",
+    Snow: "ثلج",
+    Thunderstorm: "عاصفة رعدية",
+    "Unknown conditions": "ظروف غير معروفة",
+  },
+};
+
+function getLanguage(locale: string): "en" | "fr" | "ar" {
+  const language = locale.split("-")[0]?.toLowerCase();
+  return language === "fr" || language === "ar" ? language : "en";
+}
+
 function WeatherIcon({
   name,
   size = 46,
@@ -75,6 +197,7 @@ async function getLocationName(
   latitude: number,
   longitude: number,
   locale: string,
+  signal: AbortSignal,
 ): Promise<string | null> {
   try {
     const params = new URLSearchParams({
@@ -85,6 +208,7 @@ async function getLocationName(
 
     const response = await fetch(`/api/weather/location?${params.toString()}`, {
       cache: "no-store",
+      signal,
     });
 
     if (!response.ok) {
@@ -97,6 +221,10 @@ async function getLocationName(
 
     return data.name ?? null;
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return null;
+    }
+
     console.error("Reverse geocoding error:", error);
     return null;
   }
@@ -120,6 +248,19 @@ export default function WeatherWidget({
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
+  const weatherRequestIdRef = useRef(0);
+  const locationRequestIdRef = useRef(0);
+  const locationControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+  const language = useMemo(() => getLanguage(locale), [locale]);
+  const copy = useMemo(() => WEATHER_COPY[language], [language]);
+  const numberFormatter = useMemo(() => {
+    try {
+      return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+    } catch {
+      return new Intl.NumberFormat("en", { maximumFractionDigits: 0 });
+    }
+  }, [locale]);
 
   const loadWeather = useCallback(
     async (nextLatitude: number, nextLongitude: number) => {
@@ -127,6 +268,7 @@ export default function WeatherWidget({
 
       const controller = new AbortController();
       requestControllerRef.current = controller;
+      const requestId = ++weatherRequestIdRef.current;
 
       setLoading(true);
       setError(null);
@@ -154,6 +296,13 @@ export default function WeatherWidget({
           );
         }
 
+        if (
+          !isMountedRef.current ||
+          weatherRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
+
         setWeather(payload as WeatherData);
         setCurrentLocation({
           latitude: nextLatitude,
@@ -167,15 +316,25 @@ export default function WeatherWidget({
           return;
         }
 
+        if (
+          !isMountedRef.current ||
+          weatherRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
+
         console.error("WeatherWidget error:", requestError);
-        setError("Weather is temporarily unavailable.");
+        setError(copy.weatherUnavailable);
       } finally {
-        if (requestControllerRef.current === controller) {
+        if (
+          isMountedRef.current &&
+          weatherRequestIdRef.current === requestId
+        ) {
           setLoading(false);
         }
       }
     },
-    [unitSystem],
+    [copy.weatherUnavailable, unitSystem],
   );
 
   useEffect(() => {
@@ -186,7 +345,22 @@ export default function WeatherWidget({
 
   useEffect(() => {
     setLocationLabel(city);
-  }, [city]);
+    setLocating(false);
+    locationRequestIdRef.current += 1;
+    locationControllerRef.current?.abort();
+  }, [city, latitude, locale, longitude]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      weatherRequestIdRef.current += 1;
+      locationRequestIdRef.current += 1;
+      requestControllerRef.current?.abort();
+      locationControllerRef.current?.abort();
+    };
+  }, []);
 
   const presentation = useMemo(() => {
     if (!weather) return null;
@@ -211,6 +385,21 @@ export default function WeatherWidget({
 
   const temperatureUnit = unitSystem === "imperial" ? "°F" : "°C";
   const windSpeedUnit = unitSystem === "imperial" ? "mph" : "km/h";
+  const formattedTemperature = weather
+    ? numberFormatter.format(weather.temperature)
+    : "";
+  const formattedApparentTemperature = weather
+    ? numberFormatter.format(weather.apparentTemperature)
+    : "";
+  const formattedHumidity = weather
+    ? numberFormatter.format(weather.relativeHumidity)
+    : "";
+  const formattedWindSpeed = weather
+    ? numberFormatter.format(weather.windSpeed)
+    : "";
+  const conditionLabel = presentation
+    ? CONDITION_COPY[language][presentation.label] ?? presentation.label
+    : copy.currentWeather;
 
   function handleRefresh() {
     void loadWeather(
@@ -221,42 +410,62 @@ export default function WeatherWidget({
 
   async function handleLocate() {
     if (!navigator.geolocation) {
-      setError("Geolocation is not supported by this browser.");
+      setError(copy.geolocationUnsupported);
       return;
     }
 
+    locationControllerRef.current?.abort();
+    const locationRequestId = ++locationRequestIdRef.current;
     setLocating(true);
     setError(null);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        if (
+          !isMountedRef.current ||
+          locationRequestIdRef.current !== locationRequestId
+        ) {
+          return;
+        }
+
         const { latitude, longitude } = position.coords;
-        requestControllerRef.current?.abort();
         setWeather(null);
-        setLocationLabel("Your location");
+        setLocationLabel(copy.myLocation);
         setLocating(false);
 
         void loadWeather(latitude, longitude);
 
-        try {
-          const locationName = await getLocationName(
-            latitude,
-            longitude,
-            locale,
-          );
+        const controller = new AbortController();
+        locationControllerRef.current = controller;
+        const locationName = await getLocationName(
+          latitude,
+          longitude,
+          locale,
+          controller.signal,
+        );
 
-          setLocationLabel(locationName || "Your location");
-        } catch {
-          setLocationLabel("Your location");
+        if (
+          isMountedRef.current &&
+          locationRequestIdRef.current === locationRequestId &&
+          !controller.signal.aborted
+        ) {
+          setLocationLabel(locationName || copy.myLocation);
         }
       },
       (positionError) => {
+        if (
+          !isMountedRef.current ||
+          locationRequestIdRef.current !== locationRequestId
+        ) {
+          return;
+        }
+
         setLocating(false);
 
         setError(
           positionError.code === positionError.PERMISSION_DENIED
-            ? "Location permission was denied."
-            : "Unable to determine your location.",
+            ? copy.locationPermissionDenied
+            : copy.locationUnavailable,
         );
       },
       {
@@ -268,21 +477,18 @@ export default function WeatherWidget({
   }
 
   const cardLabel = weather
-    ? `${locationLabel}: ${Math.round(
-        weather.temperature,
-      )} degrees, ${
-        presentation?.label ?? "Current weather"
-      }`
-    : `Weather for ${locationLabel}`;
+    ? copy.cardLabel(locationLabel, formattedTemperature, conditionLabel)
+    : copy.weatherFor(locationLabel);
 
   return (
     <section
       className={styles.weatherWidget}
       aria-label={cardLabel}
+      aria-busy={loading}
     >
       <div className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>Current weather</p>
+          <p className={styles.eyebrow}>{copy.currentWeather}</p>
 
           <h2 className={styles.city}>
             <MapPin size={17} aria-hidden="true" /> {locationLabel}
@@ -296,11 +502,11 @@ export default function WeatherWidget({
               type="button"
               onClick={handleLocate}
               disabled={locating || loading}
-              title="Use your current location"
+              title={copy.useCurrentLocation}
             >
               <LocateFixed size={15} aria-hidden="true" />
 
-              {locating ? "Locating…" : "My location"}
+              {locating ? copy.locating : copy.myLocation}
             </button>
           ) : null}
 
@@ -309,8 +515,8 @@ export default function WeatherWidget({
             type="button"
             onClick={handleRefresh}
             disabled={loading || locating}
-            title="Refresh weather"
-            aria-label="Refresh weather"
+            title={copy.refreshWeather}
+            aria-label={copy.refreshWeather}
           >
             <RefreshCw
               className={loading ? styles.spin : undefined}
@@ -319,7 +525,7 @@ export default function WeatherWidget({
             />
 
             <span className="visually-hidden">
-              Refresh
+              {copy.refresh}
             </span>
           </button>
         </div>
@@ -338,7 +544,7 @@ export default function WeatherWidget({
           />
 
           <p className={styles.statusText}>
-            Loading weather…
+            {copy.loadingWeather}
           </p>
         </div>
       ) : error && !weather ? (
@@ -363,7 +569,7 @@ export default function WeatherWidget({
 
               <div>
                 <span className={styles.temperature}>
-                  {Math.round(weather.temperature)}
+                  {formattedTemperature}
 
                   <span className={styles.degree}>
                     {temperatureUnit}
@@ -371,12 +577,12 @@ export default function WeatherWidget({
                 </span>
 
                 <p className={styles.condition}>
-                  {presentation.label}
+                  {conditionLabel}
                 </p>
 
                 <p className={styles.feelsLike}>
-                  Feels like{" "}
-                  {Math.round(weather.apparentTemperature)}
+                  {copy.feelsLike}{" "}
+                  {formattedApparentTemperature}
                   {temperatureUnit}
                 </p>
               </div>
@@ -385,7 +591,7 @@ export default function WeatherWidget({
             <div className={styles.metrics}>
               <div className={styles.metric}>
                 <span className={styles.metricLabel}>
-                  Humidity
+                  {copy.humidity}
                 </span>
 
                 <span className={styles.metricValue}>
@@ -393,16 +599,14 @@ export default function WeatherWidget({
                     size={15}
                     aria-hidden="true"
                   />{" "}
-                  {Math.round(
-                    weather.relativeHumidity,
-                  )}
+                  {formattedHumidity}
                   %
                 </span>
               </div>
 
               <div className={styles.metric}>
                 <span className={styles.metricLabel}>
-                  Wind
+                  {copy.wind}
                 </span>
 
                 <span className={styles.metricValue}>
@@ -410,7 +614,7 @@ export default function WeatherWidget({
                     size={15}
                     aria-hidden="true"
                   />{" "}
-                  {Math.round(weather.windSpeed)} {windSpeedUnit}
+                  {formattedWindSpeed} {windSpeedUnit}
                 </span>
               </div>
             </div>
@@ -422,13 +626,13 @@ export default function WeatherWidget({
               role="status"
               aria-live="polite"
             >
-              {error}
+              {weather ? copy.showingLastReading : error}
             </p>
           ) : null}
 
           <div className={styles.footer}>
             <span>
-              Updated {formattedUpdatedAt}
+              {copy.observedAt} {formattedUpdatedAt}
             </span>
 
             <a
@@ -437,7 +641,7 @@ export default function WeatherWidget({
               target="_blank"
               rel="noopener noreferrer"
             >
-              Weather data by Open-Meteo
+              {copy.weatherDataBy}
             </a>
           </div>
         </>
