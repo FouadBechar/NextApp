@@ -1,5 +1,3 @@
-/* nav star */
-
 *,
 *::before,
 *::after {
@@ -14,10 +12,12 @@ body {
 }
 
 body {
-  background-image: linear-gradient(140deg,
-      #182aff 0%,
-      #7082bc 50%,
-      #eadedb 75%);
+  background-image: linear-gradient(
+    140deg,
+    #182aff 0%,
+    #7082bc 50%,
+    #eadedb 75%
+  );
   background-position: center center;
   background-repeat: no-repeat;
   background-attachment: fixed;
@@ -86,10 +86,12 @@ nav[role="navigation"] {
   color: var(--text);
   top: 0;
   z-index: 50000;
-  background: linear-gradient(90deg,
-      var(--nav-bg-1),
-      var(--nav-bg-2),
-      var(--accent));
+  background: linear-gradient(
+    90deg,
+    var(--nav-bg-1),
+    var(--nav-bg-2),
+    var(--accent)
+  );
   box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
   font-family:
     Inter,
@@ -337,10 +339,12 @@ button {
   padding: 0.45rem 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0.5rem;
-  background: linear-gradient(90deg,
-      var(--nav-bg-1),
-      var(--nav-bg-2),
-      var(--accent));
+  background: linear-gradient(
+    90deg,
+    var(--nav-bg-1),
+    var(--nav-bg-2),
+    var(--accent)
+  );
   box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
   color: var(--text);
   font-size: 0.75rem;
@@ -348,7 +352,9 @@ button {
   opacity: 0;
   pointer-events: none;
   transform: translateY(-0.5rem);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
 }
 
 .mic-status.is-visible {
@@ -439,14 +445,14 @@ button {
   margin: 0.5rem 0 0.5rem 0.5rem;
 }
 
-li.open>.dropdown {
+li.open > .dropdown {
   max-height: 420px;
   transform: scaleY(1);
   opacity: 1;
   pointer-events: auto;
 }
 
-.dropdown>ul {
+.dropdown > ul {
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -471,7 +477,6 @@ li.open>.dropdown {
 }
 
 @media (min-width: 768px) {
-
   .menu-btn,
   .close-btn,
   .overlay,
@@ -506,7 +511,7 @@ li.open>.dropdown {
     min-width: 220px;
   }
 
-  .nav-menu>ul {
+  .nav-menu > ul {
     flex: 1;
     flex-direction: row;
     gap: 0.5rem;
@@ -546,14 +551,14 @@ li.open>.dropdown {
     right: 0;
   }
 
-  .nav-menu li.open>.dropdown {
+  .nav-menu li.open > .dropdown {
     visibility: visible;
     opacity: 1;
     transform: translateY(0) scaleY(1);
     pointer-events: auto;
   }
 
-  .nav-menu li.open2>.dropdown {
+  .nav-menu li.open2 > .dropdown {
     visibility: visible;
     opacity: 1;
     transform: translateY(0) scaleY(1);
@@ -574,7 +579,7 @@ li.open>.dropdown {
     flex-wrap: nowrap;
   }
 
-  .nav-menu.search-active>ul,
+  .nav-menu.search-active > ul,
   .nav-menu.search-active .search-toggle-btn {
     display: none;
   }
@@ -663,8 +668,6 @@ li.open>.dropdown {
   scroll-behavior: auto !important;
 }
 
-/* nav end */
-
 h1 {
   font-size: 1.5em;
   line-height: 1.2;
@@ -683,16 +686,19 @@ h1 {
 .ai-card {
   background:
     linear-gradient(140deg, #53aa53 0%, #7082bc 50%, #eadedb 75%) padding-box,
-    conic-gradient(from var(--border-angle),
-      oklch(100% 100% 0deg),
-      oklch(100% 100% 45deg),
-      oklch(100% 100% 90deg),
-      oklch(100% 100% 135deg),
-      oklch(100% 100% 180deg),
-      oklch(100% 100% 225deg),
-      oklch(100% 100% 270deg),
-      oklch(100% 100% 315deg),
-      oklch(100% 100% 360deg)) border-box;
+    conic-gradient(
+        from var(--border-angle),
+        oklch(100% 100% 0deg),
+        oklch(100% 100% 45deg),
+        oklch(100% 100% 90deg),
+        oklch(100% 100% 135deg),
+        oklch(100% 100% 180deg),
+        oklch(100% 100% 225deg),
+        oklch(100% 100% 270deg),
+        oklch(100% 100% 315deg),
+        oklch(100% 100% 360deg)
+      )
+      border-box;
   border-radius: 12px;
   text-align: center;
   padding: 20px;
@@ -768,20 +774,21 @@ h1 {
 }
 
 #chat-box {
-  background: linear-gradient(140deg,
-      #53aa53 0%,
-      #7082bc 50%,
-      #eadedb 75%) padding-box,
-    conic-gradient(from var(--border-angle),
-      oklch(70.186% 0.3069 330.715 / 0),
-      oklch(69.577% 0.20423 43.479 / 0),
-      oklch(90.669% 0.18812 99.48 / 0),
-      oklch(88.035% 0.27649 138.834 / 0),
-      oklch(90.541% 0.15458 194.807 / 0),
-      oklch(90.541% 0.15458 194.807 / 0),
-      oklch(100% 100% 270deg),
-      oklch(100% 0.00011 271.152 / 0),
-      oklch(70.186% 0.3069 330.715 / 0)) border-box;
+  background:
+    linear-gradient(140deg, #53aa53 0%, #7082bc 50%, #eadedb 75%) padding-box,
+    conic-gradient(
+        from var(--border-angle),
+        oklch(70.186% 0.3069 330.715 / 0),
+        oklch(69.577% 0.20423 43.479 / 0),
+        oklch(90.669% 0.18812 99.48 / 0),
+        oklch(88.035% 0.27649 138.834 / 0),
+        oklch(90.541% 0.15458 194.807 / 0),
+        oklch(90.541% 0.15458 194.807 / 0),
+        oklch(100% 100% 270deg),
+        oklch(100% 0.00011 271.152 / 0),
+        oklch(70.186% 0.3069 330.715 / 0)
+      )
+      border-box;
   position: fixed;
   bottom: 40px;
   right: 20px;
@@ -800,7 +807,9 @@ h1 {
     max-height 0.3s ease,
     transform 0.3s ease,
     box-shadow 0.3s ease;
-  animation: bounceIn 0.6s, border-angle-rotate 7s infinite linear;
+  animation:
+    bounceIn 0.6s,
+    border-angle-rotate 7s infinite linear;
 }
 
 #chat-box.open {
@@ -874,10 +883,12 @@ h1 {
 }
 
 #chat-header {
-  background: linear-gradient(90deg,
-      var(--nav-bg-1),
-      var(--nav-bg-2),
-      var(--accent));
+  background: linear-gradient(
+    90deg,
+    var(--nav-bg-1),
+    var(--nav-bg-2),
+    var(--accent)
+  );
   color: white;
   padding: 10px;
   display: flex;
@@ -1030,11 +1041,11 @@ h1 {
   display: inline-block;
 }
 
-.bubble-content> :first-child {
+.bubble-content > :first-child {
   margin-top: 0;
 }
 
-.bubble-content> :last-child {
+.bubble-content > :last-child {
   margin-bottom: 0;
 }
 
@@ -1117,7 +1128,6 @@ h1 {
 }
 
 @keyframes bounce {
-
   0%,
   80%,
   100% {
@@ -1678,20 +1688,21 @@ a:active {
 }
 
 .ff13 {
-  background: linear-gradient(140deg,
-      #53aa53 0%,
-      #7082bc 50%,
-      #eadedb 75%) padding-box,
-    conic-gradient(from var(--border-angle),
-      oklch(70.186% 0.3069 330.715 / 0),
-      oklch(69.577% 0.20423 43.479 / 0),
-      oklch(90.669% 0.18812 99.48 / 0),
-      oklch(88.035% 0.27649 138.834 / 0),
-      oklch(90.541% 0.15458 194.807 / 0),
-      oklch(90.541% 0.15458 194.807 / 0),
-      oklch(100% 100% 270deg),
-      oklch(100% 0.00011 271.152 / 0),
-      oklch(70.186% 0.3069 330.715 / 0)) border-box;
+  background:
+    linear-gradient(140deg, #53aa53 0%, #7082bc 50%, #eadedb 75%) padding-box,
+    conic-gradient(
+        from var(--border-angle),
+        oklch(70.186% 0.3069 330.715 / 0),
+        oklch(69.577% 0.20423 43.479 / 0),
+        oklch(90.669% 0.18812 99.48 / 0),
+        oklch(88.035% 0.27649 138.834 / 0),
+        oklch(90.541% 0.15458 194.807 / 0),
+        oklch(90.541% 0.15458 194.807 / 0),
+        oklch(100% 100% 270deg),
+        oklch(100% 0.00011 271.152 / 0),
+        oklch(70.186% 0.3069 330.715 / 0)
+      )
+      border-box;
   width: 45%;
   display: block;
   margin-left: auto;
@@ -1707,20 +1718,21 @@ a:active {
 }
 
 .ff14 {
-  background: linear-gradient(140deg,
-      #eadedb 0%,
-      #7082bc 50%,
-      #53aa53 75%) padding-box,
-    conic-gradient(from var(--border-angle),
-      oklch(70.186% 0.3069 330.715 / 0),
-      oklch(69.577% 0.20423 43.479 / 0),
-      oklch(90.669% 0.18812 99.48 / 0),
-      oklch(88.035% 0.27649 138.834 / 0),
-      oklch(90.541% 0.15458 194.807 / 0),
-      oklch(90.541% 0.15458 194.807 / 0),
-      oklch(100% 100% 270deg),
-      oklch(100% 0.00011 271.152 / 0),
-      oklch(70.186% 0.3069 330.715 / 0)) border-box;
+  background:
+    linear-gradient(140deg, #eadedb 0%, #7082bc 50%, #53aa53 75%) padding-box,
+    conic-gradient(
+        from var(--border-angle),
+        oklch(70.186% 0.3069 330.715 / 0),
+        oklch(69.577% 0.20423 43.479 / 0),
+        oklch(90.669% 0.18812 99.48 / 0),
+        oklch(88.035% 0.27649 138.834 / 0),
+        oklch(90.541% 0.15458 194.807 / 0),
+        oklch(90.541% 0.15458 194.807 / 0),
+        oklch(100% 100% 270deg),
+        oklch(100% 0.00011 271.152 / 0),
+        oklch(70.186% 0.3069 330.715 / 0)
+      )
+      border-box;
   width: 45%;
   margin-left: auto;
   margin-right: auto;
@@ -1819,10 +1831,7 @@ a:active {
 
 /* Cleaned typed-container and cursor styles. Removed broken/duplicated commented blocks that caused PostCSS to fail. */
 .container {
-  background: linear-gradient(140deg,
-      #53aa53 0%,
-      #7082bc 50%,
-      #eadedb 75%);
+  background: linear-gradient(140deg, #53aa53 0%, #7082bc 50%, #eadedb 75%);
   margin: 10px auto 5px auto;
   width: 70%;
   height: 28px;
@@ -1901,20 +1910,21 @@ a:active {
 }
 
 .video-card__preview {
-  background: linear-gradient(140deg,
-      #53aa53 0%,
-      #7082bc 50%,
-      #eadedb 75%) padding-box,
-    conic-gradient(from var(--border-angle),
-      oklch(70.186% 0.3069 330.715 / 0),
-      oklch(69.577% 0.20423 43.479 / 0),
-      oklch(90.669% 0.18812 99.48 / 0),
-      oklch(88.035% 0.27649 138.834 / 0),
-      oklch(90.541% 0.15458 194.807 / 0),
-      oklch(90.541% 0.15458 194.807 / 0),
-      oklch(100% 100% 270deg),
-      oklch(100% 0.00011 271.152 / 0),
-      oklch(70.186% 0.3069 330.715 / 0)) border-box;
+  background:
+    linear-gradient(140deg, #53aa53 0%, #7082bc 50%, #eadedb 75%) padding-box,
+    conic-gradient(
+        from var(--border-angle),
+        oklch(70.186% 0.3069 330.715 / 0),
+        oklch(69.577% 0.20423 43.479 / 0),
+        oklch(90.669% 0.18812 99.48 / 0),
+        oklch(88.035% 0.27649 138.834 / 0),
+        oklch(90.541% 0.15458 194.807 / 0),
+        oklch(90.541% 0.15458 194.807 / 0),
+        oklch(100% 100% 270deg),
+        oklch(100% 0.00011 271.152 / 0),
+        oklch(70.186% 0.3069 330.715 / 0)
+      )
+      border-box;
   position: relative;
   display: block;
   overflow: hidden;
@@ -1962,7 +1972,7 @@ a:active {
 }
 
 .video-card__preview:hover .video-card__play-overlay,
-.video-card__trigger:focus-visible+.video-card__play-overlay {
+.video-card__trigger:focus-visible + .video-card__play-overlay {
   background: rgba(15, 23, 42, 0.48);
 }
 
@@ -1990,9 +2000,11 @@ a:active {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background: linear-gradient(180deg,
-      rgba(15, 23, 42, 0) 0%,
-      rgba(15, 23, 42, 0.94) 95%);
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0) 0%,
+    rgba(15, 23, 42, 0.94) 95%
+  );
   color: #f8fafc;
   pointer-events: none;
 }
@@ -2105,9 +2117,11 @@ a:active {
     bottom: 0;
     z-index: 2;
     width: 100%;
-    background: linear-gradient(180deg,
-        rgba(15, 23, 42, 0.06) 0%,
-        rgba(15, 23, 42, 0.92) 72%);
+    background: linear-gradient(
+      180deg,
+      rgba(15, 23, 42, 0.06) 0%,
+      rgba(15, 23, 42, 0.92) 72%
+    );
     padding: 16px;
     gap: 10px;
     pointer-events: none;
@@ -2341,10 +2355,12 @@ a:active {
 }
 
 .container208 {
-  background-image: linear-gradient(140deg,
-      #53aa53 0%,
-      #7082bc 50%,
-      #eadedb 75%);
+  background-image: linear-gradient(
+    140deg,
+    #53aa53 0%,
+    #7082bc 50%,
+    #eadedb 75%
+  );
 
   display: flex;
   align-items: center;
