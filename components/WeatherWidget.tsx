@@ -50,6 +50,12 @@ type WeatherCopy = {
   cardLabel: (location: string, temperature: string, condition: string) => string;
 };
 
+type Location = {
+  latitude: number;
+  longitude: number;
+  label: string;
+};
+
 const WEATHER_COPY: Record<"en" | "fr" | "ar", WeatherCopy> = {
   en: {
     currentWeather: "Current weather",
@@ -239,19 +245,22 @@ export default function WeatherWidget({
   unitSystem = "metric",
 }: WeatherWidgetProps) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [currentLocation, setCurrentLocation] = useState({
+  const [currentLocation, setCurrentLocation] = useState<Location>({
     latitude,
     longitude,
+    label: city,
   });
-  const [locationLabel, setLocationLabel] = useState(city);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [hasWeatherError, setHasWeatherError] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
   const weatherRequestIdRef = useRef(0);
   const locationRequestIdRef = useRef(0);
   const locationControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  const unitSystemRef = useRef(unitSystem);
+  const providedLocationRef = useRef<Location | null>(null);
   const language = useMemo(() => getLanguage(locale), [locale]);
   const copy = useMemo(() => WEATHER_COPY[language], [language]);
   const numberFormatter = useMemo(() => {
@@ -261,6 +270,7 @@ export default function WeatherWidget({
       return new Intl.NumberFormat("en", { maximumFractionDigits: 0 });
     }
   }, [locale]);
+  unitSystemRef.current = unitSystem;
 
   const loadWeather = useCallback(
     async (nextLatitude: number, nextLongitude: number) => {
@@ -271,13 +281,13 @@ export default function WeatherWidget({
       const requestId = ++weatherRequestIdRef.current;
 
       setLoading(true);
-      setError(null);
+      setHasWeatherError(false);
 
       try {
         const response = await fetch(
           `/api/weather?lat=${encodeURIComponent(
             nextLatitude,
-          )}&lon=${encodeURIComponent(nextLongitude)}&units=${unitSystem}`,
+          )}&lon=${encodeURIComponent(nextLongitude)}&units=${unitSystemRef.current}`,
           {
             cache: "no-store",
             signal: controller.signal,
@@ -304,10 +314,6 @@ export default function WeatherWidget({
         }
 
         setWeather(payload as WeatherData);
-        setCurrentLocation({
-          latitude: nextLatitude,
-          longitude: nextLongitude,
-        });
       } catch (requestError) {
         if (
           requestError instanceof Error &&
@@ -324,7 +330,7 @@ export default function WeatherWidget({
         }
 
         console.error("WeatherWidget error:", requestError);
-        setError(copy.weatherUnavailable);
+        setHasWeatherError(true);
       } finally {
         if (
           isMountedRef.current &&
@@ -334,21 +340,37 @@ export default function WeatherWidget({
         }
       }
     },
-    [copy.weatherUnavailable, unitSystem],
+    [],
   );
 
   useEffect(() => {
-    void loadWeather(latitude, longitude);
+    const nextProvidedLocation = { latitude, longitude, label: city };
+    const previousProvidedLocation = providedLocationRef.current;
+    const hasLocationChanged =
+      !previousProvidedLocation ||
+      previousProvidedLocation.latitude !== latitude ||
+      previousProvidedLocation.longitude !== longitude ||
+      previousProvidedLocation.label !== city;
+
+    providedLocationRef.current = nextProvidedLocation;
+
+    if (hasLocationChanged) {
+      setCurrentLocation(nextProvidedLocation);
+      setWeather(null);
+      setLocating(false);
+      setLocationError(null);
+      locationRequestIdRef.current += 1;
+      locationControllerRef.current?.abort();
+      void loadWeather(latitude, longitude);
+    } else {
+      void loadWeather(currentLocation.latitude, currentLocation.longitude);
+    }
 
     return () => requestControllerRef.current?.abort();
-  }, [latitude, longitude, loadWeather]);
-
-  useEffect(() => {
-    setLocationLabel(city);
-    setLocating(false);
-    locationRequestIdRef.current += 1;
-    locationControllerRef.current?.abort();
-  }, [city, latitude, locale, longitude]);
+    // currentLocation is intentionally omitted: a unit change should reload the
+    // selected location, but selecting a location should not trigger this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city, latitude, longitude, unitSystem, loadWeather]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -410,14 +432,14 @@ export default function WeatherWidget({
 
   async function handleLocate() {
     if (!navigator.geolocation) {
-      setError(copy.geolocationUnsupported);
+      setLocationError(copy.geolocationUnsupported);
       return;
     }
 
     locationControllerRef.current?.abort();
     const locationRequestId = ++locationRequestIdRef.current;
     setLocating(true);
-    setError(null);
+    setLocationError(null);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -430,7 +452,11 @@ export default function WeatherWidget({
 
         const { latitude, longitude } = position.coords;
         setWeather(null);
-        setLocationLabel(copy.myLocation);
+        setCurrentLocation({
+          latitude,
+          longitude,
+          label: copy.myLocation,
+        });
         setLocating(false);
 
         void loadWeather(latitude, longitude);
@@ -449,7 +475,11 @@ export default function WeatherWidget({
           locationRequestIdRef.current === locationRequestId &&
           !controller.signal.aborted
         ) {
-          setLocationLabel(locationName || copy.myLocation);
+          setCurrentLocation({
+            latitude,
+            longitude,
+            label: locationName || copy.myLocation,
+          });
         }
       },
       (positionError) => {
@@ -462,7 +492,7 @@ export default function WeatherWidget({
 
         setLocating(false);
 
-        setError(
+        setLocationError(
           positionError.code === positionError.PERMISSION_DENIED
             ? copy.locationPermissionDenied
             : copy.locationUnavailable,
@@ -477,21 +507,24 @@ export default function WeatherWidget({
   }
 
   const cardLabel = weather
-    ? copy.cardLabel(locationLabel, formattedTemperature, conditionLabel)
-    : copy.weatherFor(locationLabel);
+    ? copy.cardLabel(currentLocation.label, formattedTemperature, conditionLabel)
+    : copy.weatherFor(currentLocation.label);
+  const fatalError = hasWeatherError
+    ? copy.weatherUnavailable
+    : locationError;
 
   return (
     <section
       className={styles.weatherWidget}
       aria-label={cardLabel}
-      aria-busy={loading}
+      aria-busy={loading || locating}
     >
       <div className={styles.header}>
         <div>
           <p className={styles.eyebrow}>{copy.currentWeather}</p>
 
           <h2 className={styles.city}>
-            <MapPin size={17} aria-hidden="true" /> {locationLabel}
+            <MapPin size={17} aria-hidden="true" /> {currentLocation.label}
           </h2>
         </div>
 
@@ -501,7 +534,7 @@ export default function WeatherWidget({
               className={styles.actionButton}
               type="button"
               onClick={handleLocate}
-              disabled={locating || loading}
+              disabled={locating}
               title={copy.useCurrentLocation}
             >
               <LocateFixed size={15} aria-hidden="true" />
@@ -547,12 +580,12 @@ export default function WeatherWidget({
             {copy.loadingWeather}
           </p>
         </div>
-      ) : error && !weather ? (
+      ) : fatalError && !weather ? (
         <div
           className={`${styles.status} ${styles.error}`}
           role="alert"
         >
-          <p className={styles.statusText}>{error}</p>
+          <p className={styles.statusText}>{fatalError}</p>
         </div>
       ) : weather && presentation ? (
         <>
@@ -620,13 +653,21 @@ export default function WeatherWidget({
             </div>
           </div>
 
-          {error ? (
+          {hasWeatherError ? (
             <p
               className={styles.statusText}
               role="status"
               aria-live="polite"
             >
-              {weather ? copy.showingLastReading : error}
+              {copy.showingLastReading}
+            </p>
+          ) : locationError ? (
+            <p
+              className={styles.statusText}
+              role="status"
+              aria-live="polite"
+            >
+              {locationError}
             </p>
           ) : null}
 
