@@ -13,15 +13,6 @@ body {
   height: 100%;
 }
 
-/* Tailwind directives (added manually so CLI init isn't required)
-   If you intend to use Tailwind, enable PostCSS + Tailwind in your build pipeline so these at-rules are processed.
-   Otherwise they are commented out to avoid "Unknown at rule" compile errors.
-*/
-
-/* @tailwind base;
-@tailwind components;
-@tailwind utilities; */
-
 body {
   background-image: linear-gradient(140deg,
       #182aff 0%,
@@ -130,8 +121,6 @@ nav[role="navigation"] {
 }
 
 .logo img {
-  /* height: 36px;
-  width: auto; */
   object-fit: cover;
   transition: transform 0.25s ease;
 }
@@ -691,24 +680,6 @@ h1 {
   max-width: 1000px;
 }
 
-/* .ai-card {
-
-  background-image: linear-gradient(
-    140deg,
-    #53aa53 0%,
-    #7082bc 50%,
-    #eadedb 75%
-  );
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  padding: 20px;
-  width: 250px;
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
-} */
-
 .ai-card {
   background:
     linear-gradient(140deg, #53aa53 0%, #7082bc 50%, #eadedb 75%) padding-box,
@@ -734,35 +705,6 @@ h1 {
   animation: border-angle-rotate 7s infinite linear;
 }
 
-/* .container {
-  background: linear-gradient(140deg, #53aa53 0%, #7082bc 50%, #eadedb 75%)
-      padding-box,
-    conic-gradient(
-        from var(--border-angle),
-        oklch(100% 100% 0deg),
-        oklch(100% 100% 45deg),
-        oklch(100% 100% 90deg),
-        oklch(100% 100% 135deg),
-        oklch(100% 100% 180deg),
-        oklch(100% 100% 225deg),
-        oklch(100% 100% 270deg),
-        oklch(100% 100% 315deg),
-        oklch(100% 100% 360deg)
-      )
-      border-box;
-
-  position: relative;
-  max-width: 370px;
-  width: 100%;
-  padding: 25px;
-  border-radius: 8px;
-  background-color: #fff;
-
-  box-shadow: 0px 2px 4px hsl(0 0% 0% / 25%);
-  border: 0.3rem solid transparent;
-  animation: border-angle-rotate 5s infinite linear;
-} */
-
 @keyframes border-angle-rotate {
   from {
     --border-angle: 0deg;
@@ -782,7 +724,6 @@ h1 {
 .ai-card img {
   margin-right: auto;
   margin-left: auto;
-  /* width: 50px; */
 }
 
 .ai-card h3 {
@@ -866,7 +807,6 @@ h1 {
   display: flex;
 }
 
-/* ChatWidget extracted styles (moved from inline injection in components/ChatWidget.tsx) */
 .chatwidget-typing-dots {
   display: inline-flex;
   gap: 6px;
@@ -1218,7 +1158,6 @@ h1 {
   justify-content: center;
   align-items: center;
   font-family: monospace;
-  /* animation: bounceIn 0.6s; */
 }
 
 #form-container.open {
@@ -1449,7 +1388,6 @@ h1 {
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  /* display: none; */
   opacity: 0;
   z-index: 50000;
   font-family: sans-serif;
@@ -1588,9 +1526,6 @@ strong {
   padding: 0px;
 }
 
-/* * {
-  box-sizing: border-box;
-} */
 .mySlides {
   display: none;
 }
