@@ -181,7 +181,7 @@ export function useForum() {
     setLoadingPosts(true);
     setError(null);
     try {
-      const postsData = await getThreadPosts(thread.id, 200);
+      const postsData = await getThreadPosts(thread.id, 200, controller.signal);
       if (controller.signal.aborted) return;
       setPosts(postsData);
     } catch (err: any) {
@@ -189,9 +189,10 @@ export function useForum() {
       if (mounted.current) setError("Failed to load replies.");
       console.error(err);
     } finally {
-      if (activeThreadControllerRef.current === controller)
+      if (activeThreadControllerRef.current === controller) {
         activeThreadControllerRef.current = null;
-      setLoadingPosts(false);
+        setLoadingPosts(false);
+      }
     }
   }
 
@@ -378,31 +379,77 @@ export function useForum() {
   }
 
   async function reportThread(threadId: string) {
-    toast.success("Reported — thank you");
     try {
       await reportForumThread(threadId);
-    } catch (_e) {}
+      toast.success("Reported — thank you");
+    } catch (err) {
+      toast.error("Failed to report thread — please try again");
+      setError("Failed to report discussion.");
+      console.error(err);
+      throw err;
+    }
   }
 
   async function reportReply(threadId: string, postId: string) {
-    toast.success("Reported — thank you");
     try {
       await reportPost(threadId, postId);
-    } catch (_e) {}
+      toast.success("Reported — thank you");
+    } catch (err) {
+      toast.error("Failed to report reply — please try again");
+      setError("Failed to report reply.");
+      console.error(err);
+      throw err;
+    }
   }
 
-  function togglePinThread(threadId: string) {
+  async function togglePinThread(threadId: string) {
+    const previousThread = threads.find((thread) => thread.id === threadId);
+    if (!previousThread) return;
     setThreads((prev) =>
       prev.map((th) => (th.id === threadId ? { ...th, pinned: !th.pinned } : th))
     );
-    pinForumThread(threadId).catch(() => {});
+    setSelected((prev) =>
+      prev?.id === threadId ? { ...prev, pinned: !prev.pinned } : prev
+    );
+    try {
+      await pinForumThread(threadId);
+    } catch (err) {
+      setThreads((prev) =>
+        prev.map((thread) =>
+          thread.id === threadId
+            ? { ...thread, pinned: previousThread.pinned }
+            : thread
+        )
+      );
+      setSelected((prev) =>
+        prev?.id === threadId
+          ? { ...prev, pinned: previousThread.pinned }
+          : prev
+      );
+      toast.error("Failed to update thread pin");
+      setError("Failed to update thread pin.");
+      console.error(err);
+      throw err;
+    }
   }
 
-  function togglePinReply(post: Post) {
+  async function togglePinReply(post: Post) {
     setPosts((prev) =>
       prev.map((pt) => (pt.id === post.id ? { ...pt, pinned: !pt.pinned } : pt))
     );
-    pinPost(post.thread_id, post.id).catch(() => {});
+    try {
+      await pinPost(post.thread_id, post.id);
+    } catch (err) {
+      setPosts((prev) =>
+        prev.map((reply) =>
+          reply.id === post.id ? { ...reply, pinned: post.pinned } : reply
+        )
+      );
+      toast.error("Failed to update reply pin");
+      setError("Failed to update reply pin.");
+      console.error(err);
+      throw err;
+    }
   }
 
   return {

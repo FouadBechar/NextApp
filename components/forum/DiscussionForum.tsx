@@ -16,6 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+type PendingAction =
+  | "deleteThread"
+  | "deletePost"
+  | "editThread"
+  | "editPost"
+  | "reportThread"
+  | "reportPost"
+  | null;
 
 export default function DiscussionForum(): React.ReactElement {
   const {
@@ -48,6 +56,7 @@ export default function DiscussionForum(): React.ReactElement {
   const [replyComposerOpen, setReplyComposerOpen] = useState(false);
   const [posting, setPosting] = useState(false);
   const selectedThreadRef = useRef<HTMLDivElement | null>(null);
+  const { setIsTyping } = useTyping();
 
   // track focused input & caret using a shared hook so we can restore focus
   // when the thread list updates
@@ -63,14 +72,10 @@ export default function DiscussionForum(): React.ReactElement {
     [threads],
     {
       onFocus: () => {
-        try {
-          setIsTyping(true);
-        } catch (err) {}
+        setIsTyping(true);
       },
       onBlur: () => {
-        try {
-          setIsTyping(false);
-        } catch (err) {}
+        setIsTyping(false);
       },
     }
   );
@@ -84,8 +89,17 @@ export default function DiscussionForum(): React.ReactElement {
   } | null>(null);
   const [editingThread, setEditingThread] = useState<Thread | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editPostContent, setEditPostContent] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [pendingPinIds, setPendingPinIds] = useState<Set<string>>(
+    () => new Set()
+  );
 
   useEffect(() => {
+    setEditError(null);
     if (editingThread) {
       setEditTitle(editingThread.title ?? "");
       setEditContent(editingThread.content ?? "");
@@ -96,6 +110,7 @@ export default function DiscussionForum(): React.ReactElement {
   }, [editingThread]);
 
   useEffect(() => {
+    setEditError(null);
     if (editingPost) {
       setEditPostContent(editingPost.content ?? "");
     } else {
@@ -129,15 +144,7 @@ export default function DiscussionForum(): React.ReactElement {
     postId: string;
   } | null>(null);
 
-  // Edit modal controlled inputs
-  const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
-  const [editPostContent, setEditPostContent] = useState("");
-
   // all forum state and network effects are handled by useForum hook
-
-  // Typing context: when input focus is gained/lost, update global typing state
-  const { setIsTyping } = useTyping();
 
   // Close inline kebab menu when clicking outside
   // The Menu component manages focus and closing behavior.
@@ -149,20 +156,28 @@ export default function DiscussionForum(): React.ReactElement {
   // Delete a thread (only allowed for author or authorized users).
   async function handleDeleteThread(threadId: string) {
     if (!threadId) return;
+    setPendingAction("deleteThread");
     try {
       await deleteThreadFn(threadId);
+      setConfirmDeleteThreadId(null);
     } catch (err) {
       console.error(err);
+    } finally {
+      setPendingAction(null);
     }
   }
 
   // Delete a post/reply
   async function handleDeletePost(threadId: string, postId: string) {
     if (!threadId || !postId) return;
+    setPendingAction("deletePost");
     try {
       await deleteReplyFn(threadId, postId);
+      setConfirmDeletePost(null);
     } catch (err) {
       console.error(err);
+    } finally {
+      setPendingAction(null);
     }
   }
 
@@ -171,11 +186,14 @@ export default function DiscussionForum(): React.ReactElement {
     updated: { title?: string; content?: string }
   ) {
     if (!threadId) return;
+    setPendingAction("editThread");
     try {
       await editThreadFn(threadId, updated);
       setEditingThread(null);
     } catch (err) {
       console.error(err);
+    } finally {
+      setPendingAction(null);
     }
   }
 
@@ -185,22 +203,71 @@ export default function DiscussionForum(): React.ReactElement {
     updated: { content?: string }
   ) {
     if (!threadId || !postId) return;
+    setPendingAction("editPost");
     try {
       await editReplyFn(threadId, postId, updated);
       setEditingPost(null);
     } catch (err) {
       console.error(err);
+    } finally {
+      setPendingAction(null);
     }
   }
 
   async function handleReportThread(threadId: string) {
-    setReportingThreadId(null);
-    await reportThreadFn(threadId);
+    setPendingAction("reportThread");
+    try {
+      await reportThreadFn(threadId);
+      setReportingThreadId(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   async function handleReportPost(threadId: string, postId: string) {
-    setReportingPost(null);
-    await reportReplyFn(threadId, postId);
+    setPendingAction("reportPost");
+    try {
+      await reportReplyFn(threadId, postId);
+      setReportingPost(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function handleTogglePinThread(threadId: string) {
+    if (pendingPinIds.has(threadId)) return;
+    setPendingPinIds((previous) => new Set(previous).add(threadId));
+    try {
+      await togglePinThreadFn(threadId);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPendingPinIds((previous) => {
+        const next = new Set(previous);
+        next.delete(threadId);
+        return next;
+      });
+    }
+  }
+
+  async function handleTogglePinReply(post: Post) {
+    if (pendingPinIds.has(post.id)) return;
+    setPendingPinIds((previous) => new Set(previous).add(post.id));
+    try {
+      await togglePinReplyFn(post);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPendingPinIds((previous) => {
+        const next = new Set(previous);
+        next.delete(post.id);
+        return next;
+      });
+    }
   }
 
   async function handleCreateThread(e?: React.FormEvent) {
@@ -262,13 +329,20 @@ export default function DiscussionForum(): React.ReactElement {
             <CardContent>
               <div className="mb-4">
                 <form onSubmit={handleCreateThread} className="space-y-2">
+                  <label htmlFor="create-thread-title" className="sr-only">
+                    Thread title
+                  </label>
                   <Input
                     placeholder="Thread title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     onKeyDown={(e) => e.stopPropagation()}
+                    required
                     {...createHandlers("title")}
                   />
+                  <label htmlFor="create-thread-body" className="sr-only">
+                    Discussion content
+                  </label>
                   <textarea
                     placeholder="Start a discussion..."
                     value={body}
@@ -276,6 +350,7 @@ export default function DiscussionForum(): React.ReactElement {
                       setBody(e.target.value)
                     }
                     onKeyDown={(e) => e.stopPropagation()}
+                    required
                     {...createHandlers("body")}
                     rows={4}
                     className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
@@ -300,9 +375,8 @@ export default function DiscussionForum(): React.ReactElement {
                     onEdit={(t) => setEditingThread(t)}
                     onRequestDelete={(id) => setConfirmDeleteThreadId(id)}
                     onRequestReport={(id) => setReportingThreadId(id)}
-                    onTogglePin={(id) => {
-                      togglePinThreadFn(id);
-                    }}
+                    onTogglePin={handleTogglePinThread}
+                    pinPendingIds={pendingPinIds}
                   />
                 )}
               </div>
@@ -391,9 +465,8 @@ export default function DiscussionForum(): React.ReactElement {
                         setConfirmDeletePost({ threadId, postId })
                       }
                       onReport={(payload) => setReportingPost(payload)}
-                      togglePin={(post) => {
-                        togglePinReplyFn(post);
-                      }}
+                      togglePin={handleTogglePinReply}
+                      pinPending={pendingPinIds.has(p.id)}
                     />
                   ))}
                 </div>
@@ -439,13 +512,12 @@ export default function DiscussionForum(): React.ReactElement {
             </Button>
             <Button
               variant="destructive"
+              disabled={pendingAction === "deleteThread"}
               onClick={() => {
-                if (confirmDeleteThreadId)
-                  handleDeleteThread(confirmDeleteThreadId);
-                setConfirmDeleteThreadId(null);
+                if (confirmDeleteThreadId) void handleDeleteThread(confirmDeleteThreadId);
               }}
             >
-              Delete
+              {pendingAction === "deleteThread" ? "Deleting…" : "Delete"}
             </Button>
           </div>
         </div>
@@ -468,16 +540,16 @@ export default function DiscussionForum(): React.ReactElement {
             </Button>
             <Button
               variant="destructive"
+              disabled={pendingAction === "deletePost"}
               onClick={() => {
                 if (confirmDeletePost)
-                  handleDeletePost(
+                  void handleDeletePost(
                     confirmDeletePost.threadId,
                     confirmDeletePost.postId
                   );
-                setConfirmDeletePost(null);
               }}
             >
-              Delete
+              {pendingAction === "deletePost" ? "Deleting…" : "Delete"}
             </Button>
           </div>
         </div>
@@ -493,9 +565,14 @@ export default function DiscussionForum(): React.ReactElement {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (!editTitle.trim() || !editContent.trim()) {
+                setEditError("A thread needs both a title and content.");
+                return;
+              }
+              setEditError(null);
               handleEditThreadSave(editingThread.id, {
-                title: editTitle,
-                content: editContent,
+                title: editTitle.trim(),
+                content: editContent.trim(),
               });
             }}
           >
@@ -510,9 +587,13 @@ export default function DiscussionForum(): React.ReactElement {
                 <input
                   placeholder="Thread title"
                   value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
+                  onChange={(e) => {
+                    setEditTitle(e.target.value);
+                    setEditError(null);
+                  }}
                   className="mt-1 block w-full rounded-md border-input px-3 py-2"
                   onKeyDown={(e) => e.stopPropagation()}
+                  required
                   {...createHandlers("editThreadTitle")}
                 />
               </div>
@@ -526,23 +607,32 @@ export default function DiscussionForum(): React.ReactElement {
                 <textarea
                   placeholder="Thread content"
                   value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
+                  onChange={(e) => {
+                    setEditContent(e.target.value);
+                    setEditError(null);
+                  }}
                   rows={5}
                   className="mt-1 block w-full rounded-md border-input px-3 py-2"
                   onKeyDown={(e) => e.stopPropagation()}
+                  required
                   {...createHandlers("editThreadContent")}
                 />
               </div>
+              {editError ? <p role="alert" className="text-sm text-destructive">{editError}</p> : null}
               <div className="flex gap-2 justify-end pt-2">
                 <Button
+                  type="button"
                   variant="ghost"
+                  disabled={pendingAction === "editThread"}
                   onClick={() => {
                     setEditingThread(null);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Save</Button>
+                <Button type="submit" disabled={pendingAction === "editThread"}>
+                  {pendingAction === "editThread" ? "Saving…" : "Save"}
+                </Button>
               </div>
             </div>
           </form>
@@ -559,8 +649,13 @@ export default function DiscussionForum(): React.ReactElement {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (!editPostContent.trim()) {
+                setEditError("A reply cannot be empty.");
+                return;
+              }
+              setEditError(null);
               handleEditPostSave(editingPost.thread_id, editingPost.id, {
-                content: editPostContent,
+                content: editPostContent.trim(),
               });
             }}
           >
@@ -575,18 +670,25 @@ export default function DiscussionForum(): React.ReactElement {
                 <textarea
                   placeholder="Reply content"
                   value={editPostContent}
-                  onChange={(e) => setEditPostContent(e.target.value)}
+                  onChange={(e) => {
+                    setEditPostContent(e.target.value);
+                    setEditError(null);
+                  }}
                   rows={5}
                   className="mt-1 block w-full rounded-md border-input px-3 py-2"
                   onKeyDown={(e) => e.stopPropagation()}
+                  required
                   {...createHandlers("editPost")}
                 />
               </div>
+              {editError ? <p role="alert" className="text-sm text-destructive">{editError}</p> : null}
               <div className="flex gap-2 justify-end pt-2">
-                <Button variant="ghost" onClick={() => setEditingPost(null)}>
+                <Button type="button" variant="ghost" disabled={pendingAction === "editPost"} onClick={() => setEditingPost(null)}>
                   Cancel
                 </Button>
-                <Button type="submit">Save</Button>
+                <Button type="submit" disabled={pendingAction === "editPost"}>
+                  {pendingAction === "editPost" ? "Saving…" : "Save"}
+                </Button>
               </div>
             </div>
           </form>
@@ -610,11 +712,12 @@ export default function DiscussionForum(): React.ReactElement {
             </Button>
             <Button
               variant="destructive"
+              disabled={pendingAction === "reportThread"}
               onClick={() => {
-                if (reportingThreadId) handleReportThread(reportingThreadId);
+                if (reportingThreadId) void handleReportThread(reportingThreadId);
               }}
             >
-              Report
+              {pendingAction === "reportThread" ? "Reporting…" : "Report"}
             </Button>
           </div>
         </div>
@@ -637,15 +740,16 @@ export default function DiscussionForum(): React.ReactElement {
             </Button>
             <Button
               variant="destructive"
+              disabled={pendingAction === "reportPost"}
               onClick={() => {
                 if (reportingPost)
-                  handleReportPost(
+                  void handleReportPost(
                     reportingPost.threadId,
                     reportingPost.postId
                   );
               }}
             >
-              Report
+              {pendingAction === "reportPost" ? "Reporting…" : "Report"}
             </Button>
           </div>
         </div>

@@ -213,7 +213,7 @@ export function MenuContent({ children, align = 'end', className = '', id }: { c
   );
 }
 
-export function MenuItem({ children, onSelect, className = '' }: { children: React.ReactNode; onSelect: (e: React.MouseEvent) => void; className?: string }) {
+export function MenuItem({ children, onSelect, className = '', disabled = false }: { children: React.ReactNode; onSelect: (e: React.MouseEvent) => void; className?: string; disabled?: boolean }) {
   const ctx = useContext(MenuContext);
   const elRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
@@ -227,7 +227,8 @@ export function MenuItem({ children, onSelect, className = '' }: { children: Rea
       ref={elRef}
       data-menuitem
       tabIndex={0}
-      className={cn('flex items-center gap-2 px-3 py-2 w-full text-left hover:bg-muted focus:outline-none', className)}
+      disabled={disabled}
+      className={cn('flex items-center gap-2 px-3 py-2 w-full text-left hover:bg-muted focus:outline-none disabled:pointer-events-none disabled:opacity-50', className)}
       onClick={(e) => {
         e.stopPropagation();
         try {

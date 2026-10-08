@@ -13,7 +13,8 @@ interface ThreadListProps {
   onEdit: (thread: Thread) => void;
   onRequestDelete: (threadId: string) => void;
   onRequestReport: (threadId: string) => void;
-  onTogglePin: (threadId: string) => void;
+  onTogglePin: (threadId: string) => void | Promise<void>;
+  pinPendingIds?: Set<string>;
 }
 
 const pageSize = 10;
@@ -27,6 +28,7 @@ export default function ThreadList({
   onRequestDelete,
   onRequestReport,
   onTogglePin,
+  pinPendingIds,
 }: ThreadListProps) {
   const [page, setPage] = useState(0);
 
@@ -76,7 +78,10 @@ export default function ThreadList({
                         </MenuTrigger>
                         <MenuContent align="end" id={`menu-thread-${t.id}`}>
                           <MenuItem onSelect={() => onEdit(t)}>Edit</MenuItem>
-                          <MenuItem onSelect={() => onTogglePin(t.id)}>
+                          <MenuItem
+                            disabled={pinPendingIds?.has(t.id)}
+                            onSelect={() => onTogglePin(t.id)}
+                          >
                             {t.pinned ? "Unpin" : "Pin"}
                           </MenuItem>
                           <MenuItem onSelect={() => onRequestReport(t.id)}>

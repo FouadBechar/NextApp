@@ -21,7 +21,8 @@ type Props = {
   onEdit: (p: Post) => void;
   onDelete: (threadId: string, postId: string) => void;
   onReport: (payload: { threadId: string; postId: string }) => void;
-  togglePin?: (p: Post) => void;
+  togglePin?: (p: Post) => void | Promise<void>;
+  pinPending?: boolean;
 };
 
 export default function PostItem({
@@ -31,6 +32,7 @@ export default function PostItem({
   onDelete,
   onReport,
   togglePin,
+  pinPending = false,
 }: Props) {
   return (
     <div key={post.id} className="p-3 border rounded group">
@@ -65,6 +67,7 @@ export default function PostItem({
               <MenuContent align="end" id={`menu-post-${post.id}`}>
                 <MenuItem onSelect={() => onEdit(post)}>Edit</MenuItem>
                 <MenuItem
+                  disabled={pinPending}
                   onSelect={() => togglePin && togglePin(post)}
                 >
                   {post.pinned ? "Unpin" : "Pin"}

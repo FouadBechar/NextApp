@@ -14,9 +14,14 @@ export async function getThreads(): Promise<Thread[]> {
   return json.threads || [];
 }
 
-export async function getThreadPosts(threadId: string, limit = 200): Promise<Post[]> {
+export async function getThreadPosts(
+  threadId: string,
+  limit = 200,
+  signal?: AbortSignal
+): Promise<Post[]> {
   const json = await handleFetch<{ posts: Post[] }>(
-    `/api/forum/threads/${threadId}/posts?limit=${limit}`
+    `/api/forum/threads/${threadId}/posts?limit=${limit}`,
+    { signal }
   );
   return json.posts || [];
 }
