@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.24.3
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Ensure env files are ignored
+        run: |
+          for pattern in .env .env.local .env.*.local; do
+            if ! git check-ignore -q "$pattern"; then
+             echo "Error: $pattern must be ignored in .gitignore"
+             exit 1
+            fi
+          done
+
+      - name: Install Gitleaks
+        run: |
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+
+      - name: Scan for secrets
+        run: gitleaks detect --redact -v --exit-code=2 --log-level=debug --log-opts=-1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit:run
+
+      - name: Build production
+        run: npm run build
