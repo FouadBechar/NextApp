@@ -55,7 +55,7 @@ export default function PostItem({
         </div>
 
         {currentUserId && currentUserId === post.author_id && (
-          <div className="ml-4 relative opacity-0 group-hover:opacity-100 transition">
+          <div className="ml-4 relative">
             <Menu>
               <MenuTrigger>
                 <Button asChild variant="ghost" size="icon" aria-label="Reply actions">
