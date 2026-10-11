@@ -89,12 +89,6 @@ Use `ALLOWED_DEV_ORIGINS` when testing the site from another device on your loca
 ALLOWED_DEV_ORIGINS=http://localhost:3000,http://192.168.100.3:3000
 ```
 
-Enable client-side chat debug logging locally with:
-
-```bash
-NEXT_PUBLIC_CHAT_DEBUG=true
-```
-
 ### Important notes
 
 - Do not commit secrets.
@@ -177,15 +171,15 @@ For security process guidance and disclosure instructions, see `SECURITY.md`.
 
 ## Chat Model Configuration
 
-This project uses an external chat backend at `https://chat-779e.onrender.com/chat`.
-
-To request a specific default model for all clients, set:
+The chat widget calls the same-origin `/api/chat` route. Configure its OpenRouter
+provider key and default model on the server:
 
 ```bash
-NEXT_PUBLIC_CHAT_DEFAULT_MODEL=claude-haiku-4.5
+OPENROUTER_API_KEY=your-openrouter-api-key
+CHAT_DEFAULT_MODEL=openai/gpt-4o-mini
 ```
 
-The backend must support that model identifier or map it correctly on the server side.
+The browser cannot choose an upstream endpoint or model.
 
 ## Tech Stack
 

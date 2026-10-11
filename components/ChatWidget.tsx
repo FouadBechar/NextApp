@@ -5,35 +5,60 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import SafeImage from "./ui/SafeImage";
-const icon = "/assets/chat-icon.png";
-const icon1 = "/assets/icon1.svg";
-const icon2 = "/assets/icon2.svg";
-const icon3 = "/assets/icon3.webp";
+import styles from "./chatwidget.module.css";
+
 const CHAT_STORAGE_KEY = "nextapp:chat-widget:history";
-const CHAT_API_URL = process.env.NEXT_PUBLIC_CHAT_API_URL || "/api/chat";
-const DEFAULT_MODEL =
-  process.env.NEXT_PUBLIC_CHAT_DEFAULT_MODEL || "openai/gpt-4o-mini";
-const ENABLE_WARMUP = process.env.NEXT_PUBLIC_CHAT_WARMUP === "true";
-const TYPEWRITER_DELAY_MS = 18;
+const MAX_STORED_MESSAGES = 40;
+const MAX_REQUEST_MESSAGES = 20;
+const REPLY_ANIMATION_MIN_MS = 180;
+const REPLY_ANIMATION_MAX_MS = 800;
+
+type ChatRole = "user" | "bot";
 
 type ChatMessage = {
-  role: string;
-  text?: string;
-  content?: string;
+  role: ChatRole;
+  text: string;
 };
 
-type ChatResponse = { reply?: string; error?: string };
+type ChatResponse = { reply?: string };
+
+function parseStoredHistory(value: string | null): ChatMessage[] {
+  if (!value) return [];
+
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .flatMap((message): ChatMessage[] => {
+      if (!message || typeof message !== "object") return [];
+      const candidate = message as {
+        role?: unknown;
+        text?: unknown;
+        content?: unknown;
+      };
+      if (candidate.role !== "user" && candidate.role !== "bot") return [];
+
+      const text =
+        typeof candidate.text === "string"
+          ? candidate.text
+          : typeof candidate.content === "string"
+            ? candidate.content
+            : "";
+
+      return text ? [{ role: candidate.role, text }] : [];
+    })
+    .slice(-MAX_STORED_MESSAGES);
+}
 
 function sanitizeLinksReact(text: string): React.ReactNode[] {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+
   while ((match = urlRegex.exec(text)) !== null) {
     const url = match[0];
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     parts.push(
       <a key={match.index} href={url} target="_blank" rel="noopener noreferrer">
         {url}
@@ -41,13 +66,12 @@ function sanitizeLinksReact(text: string): React.ReactNode[] {
     );
     lastIndex = match.index + url.length;
   }
+
   if (lastIndex < text.length) parts.push(text.slice(lastIndex));
   return parts;
 }
 
 function renderMessageContent(message: ChatMessage) {
-  const text = message.text ?? message.content ?? "";
-
   if (message.role === "bot") {
     return (
       <ReactMarkdown
@@ -61,176 +85,178 @@ function renderMessageContent(message: ChatMessage) {
           ),
         }}
       >
-        {text}
+        {message.text}
       </ReactMarkdown>
     );
   }
 
-  return typeof text === "string" ? sanitizeLinksReact(text) : text;
+  return sanitizeLinksReact(message.text);
 }
 
 export default function ChatWidget() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]); // {role, text}
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const restoreFocusOnCloseRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const typewriterIntervalRef = useRef<number | null>(null);
-  const typewriterResolveRef = useRef<(() => void) | null>(null);
+  const replyAnimationFrameRef = useRef<number | null>(null);
+  const replyAnimationResolveRef = useRef<(() => void) | null>(null);
+  const requestVersionRef = useRef(0);
 
-  // Removed injected CSS; styles are now managed in app/globals.css
+  const appendMessage = (message: ChatMessage) => {
+    setMessages((current) => [...current, message].slice(-MAX_STORED_MESSAGES));
+  };
 
   useEffect(() => {
-    // load history
     try {
-      const hist: any[] = JSON.parse(
-        localStorage.getItem(CHAT_STORAGE_KEY) || "[]",
-      );
-      // normalize older entries that used `content` property -> map to `text` for the UI
-      const normalized: ChatMessage[] = (hist || []).map((m: any) => ({
-        role: String(m?.role ?? "user"),
-        text:
-          typeof m?.text === "string"
-            ? m.text
-            : typeof m?.content === "string"
-              ? m.content
-              : "",
-      }));
-      setMessages(normalized);
-    } catch (err) {
-      console.debug("ChatWidget load history error", err);
+      setMessages(parseStoredHistory(localStorage.getItem(CHAT_STORAGE_KEY)));
+    } catch (error) {
+      console.debug("ChatWidget could not load history", error);
+    } finally {
+      setHistoryLoaded(true);
     }
-    if (!ENABLE_WARMUP) {
-      return;
-    }
-
-    // warm up connection (fire-and-forget)
-    (async function warmUp() {
-      try {
-        await fetch(CHAT_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: DEFAULT_MODEL,
-            messages: [{ role: "system", content: "warmup" }],
-          }),
-        });
-      } catch (err) {
-        console.debug("ChatWidget warmUp error", err);
-      }
-    })();
   }, []);
 
   useEffect(() => {
-    // persist
+    if (!historyLoaded) return;
+
     try {
       localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-    } catch (err) {
-      console.debug("ChatWidget persist error", err);
+    } catch (error) {
+      console.debug("ChatWidget could not save history", error);
     }
-  }, [messages]);
+  }, [historyLoaded, messages]);
+
+  useEffect(() => {
+    if (open) {
+      inputRef.current?.focus();
+    } else if (restoreFocusOnCloseRef.current) {
+      toggleRef.current?.focus();
+      restoreFocusOnCloseRef.current = false;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeChat();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+
+  useEffect(() => {
+    if (messagesRef.current) {
+      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+    }
+  }, [messages, isTyping]);
 
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
-      stopTypewriter(true);
+      stopReplyAnimation(true);
     };
   }, []);
 
-  useEffect(() => {
-    // scroll to bottom whenever messages change
-    try {
-      if (messagesRef.current) {
-        const el = messagesRef.current;
-        el.scrollTop = el.scrollHeight;
-      }
-    } catch (err) {
-      console.debug("ChatWidget scroll error", err);
+  function stopReplyAnimation(resolvePending = false) {
+    if (replyAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(replyAnimationFrameRef.current);
+      replyAnimationFrameRef.current = null;
     }
-  }, [messages]);
-
-  function stopTypewriter(resolvePending = false) {
-    if (typewriterIntervalRef.current !== null) {
-      window.clearInterval(typewriterIntervalRef.current);
-      typewriterIntervalRef.current = null;
-    }
-
-    if (resolvePending && typewriterResolveRef.current) {
-      typewriterResolveRef.current();
-      typewriterResolveRef.current = null;
+    if (resolvePending && replyAnimationResolveRef.current) {
+      replyAnimationResolveRef.current();
+      replyAnimationResolveRef.current = null;
     }
   }
 
+  function cancelActiveRequest() {
+    requestVersionRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    stopReplyAnimation(true);
+    setIsTyping(false);
+    setSending(false);
+  }
+
   function clearHistory() {
-    stopTypewriter(true);
+    cancelActiveRequest();
     try {
       localStorage.removeItem(CHAT_STORAGE_KEY);
-    } catch (err) {
-      console.debug("ChatWidget clearHistory error", err);
+    } catch (error) {
+      console.debug("ChatWidget could not clear history", error);
     }
     setMessages([]);
   }
 
-  function typeBotReply(reply: string) {
-    stopTypewriter(true);
+  function closeChat() {
+    restoreFocusOnCloseRef.current = true;
+    setOpen(false);
+  }
 
-    setMessages((m) => [...m, { role: "bot", text: "" }]);
+  function typeBotReply(reply: string) {
+    stopReplyAnimation(true);
+    appendMessage({ role: "bot", text: "" });
 
     return new Promise<void>((resolve) => {
-      typewriterResolveRef.current = resolve;
-      let index = 0;
+      replyAnimationResolveRef.current = resolve;
+      const duration = Math.min(
+        REPLY_ANIMATION_MAX_MS,
+        Math.max(REPLY_ANIMATION_MIN_MS, reply.length * 2),
+      );
+      const startedAt = performance.now();
 
-      typewriterIntervalRef.current = window.setInterval(() => {
-        index += 1;
-
-        setMessages((m) => {
-          const next = [...m];
-          const lastIndex = next.length - 1;
-          const lastMessage = next[lastIndex];
-
-          if (!lastMessage || lastMessage.role !== "bot") {
-            return m;
-          }
-
-          next[lastIndex] = {
-            ...lastMessage,
-            text: reply.slice(0, index),
-          };
+      const animate = (now: number) => {
+        const progress = Math.min(1, (now - startedAt) / duration);
+        const displayedLength = Math.ceil(reply.length * progress);
+        setMessages((current) => {
+          const lastIndex = current.length - 1;
+          const lastMessage = current[lastIndex];
+          if (!lastMessage || lastMessage.role !== "bot") return current;
+          const next = [...current];
+          next[lastIndex] = { ...lastMessage, text: reply.slice(0, displayedLength) };
           return next;
         });
 
-        if (index >= reply.length) {
-          stopTypewriter();
-          typewriterResolveRef.current = null;
+        if (progress === 1) {
+          replyAnimationFrameRef.current = null;
+          replyAnimationResolveRef.current = null;
           resolve();
+          return;
         }
-      }, TYPEWRITER_DELAY_MS);
+        replyAnimationFrameRef.current = window.requestAnimationFrame(animate);
+      };
+
+      replyAnimationFrameRef.current = window.requestAnimationFrame(animate);
     });
   }
 
   async function sendMessage() {
     const text = input.trim();
     if (!text) {
-      // show a bot message for empty
-      setMessages((m) => [
-        ...m,
-        { role: "bot", text: "⚠️ Message is empty. Please say something." },
-      ]);
+      appendMessage({ role: "bot", text: "⚠️ Message is empty. Please say something." });
       return;
     }
     if (text.length > 300) {
-      setMessages((m) => [
-        ...m,
-        { role: "bot", text: "Your message is too long. Please shorten it." },
-      ]);
+      appendMessage({ role: "bot", text: "Your message is too long. Please shorten it." });
       return;
     }
 
-    setMessages((m) => [...m, { role: "user", text }]);
+    const requestVersion = ++requestVersionRef.current;
+    const requestMessages = [...messages, { role: "user" as const, text }]
+      .slice(-MAX_REQUEST_MESSAGES)
+      .map((message) => ({
+        role: message.role === "bot" ? "assistant" : "user",
+        content: message.text,
+      }));
+
+    appendMessage({ role: "user", text });
     setInput("");
     setSending(true);
     setIsTyping(true);
@@ -240,150 +266,114 @@ export default function ChatWidget() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      // Build payload that matches backend expectations: array of { role, content }
-      const backendMessages = messages.map((m: ChatMessage) => ({
-        role: m.role === "bot" ? "assistant" : m.role,
-        content: m.text ?? m.content ?? "",
-      }));
-      backendMessages.push({ role: "user", content: text });
-
-      const enableChatDebug =
-        process.env.NEXT_PUBLIC_CHAT_DEBUG === "true" ||
-        process.env.NODE_ENV !== "production";
-      if (enableChatDebug) {
-        console.debug("ChatWidget: sending request", {
-          apiUrl: CHAT_API_URL,
-          model: DEFAULT_MODEL,
-        });
-      }
-      const res = await fetch(CHAT_API_URL, {
+      const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({
-          model: DEFAULT_MODEL,
-          messages: backendMessages,
-        }),
+        body: JSON.stringify({ messages: requestMessages }),
       });
 
-      // If server returned non-2xx, read the body for details to surface in the UI
-      if (!res.ok) {
-        let errText = res.statusText;
-        try {
-          const data: ChatResponse = await res.json();
-          errText = data.error || errText;
-        } catch (err) {
-          console.debug("ChatWidget read error body", err);
-        }
-        throw new Error(errText || "The chat service is unavailable.");
+      if (!response.ok) {
+        throw new Error("The chat service is temporarily unavailable. Please try again.");
       }
 
-      const data: ChatResponse = await res.json();
-      if (!data.reply) throw new Error("No valid response body from the bot.");
-      setIsTyping(false);
-      await typeBotReply(String(data.reply));
-    } catch (err) {
-      setIsTyping(false);
-      if (err instanceof DOMException && err.name === "AbortError") {
-        return;
+      const data: ChatResponse = await response.json();
+      if (typeof data.reply !== "string" || !data.reply) {
+        throw new Error("The chat service returned an invalid response. Please try again.");
       }
-      const messageText = err instanceof Error ? err.message : String(err);
-      setMessages((m) => [
-        ...m,
-        { role: "bot", text: `🤖 Error while connecting: ${messageText}` },
-      ]);
+      if (requestVersion !== requestVersionRef.current) return;
+
+      setIsTyping(false);
+      await typeBotReply(data.reply);
+    } catch (error) {
+      if (requestVersion !== requestVersionRef.current) return;
+      setIsTyping(false);
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      appendMessage({
+        role: "bot",
+        text: "🤖 I’m unable to respond right now. Please try again shortly.",
+      });
     } finally {
-      abortControllerRef.current = null;
-      setSending(false);
+      if (requestVersion === requestVersionRef.current) {
+        abortControllerRef.current = null;
+        setSending(false);
+      }
     }
   }
 
   return (
     <>
       <button
-        id="chat-toggle"
+        ref={toggleRef}
         type="button"
-        aria-label="Open Chat"
+        aria-label="Open chat"
+        aria-controls="chat-box"
+        aria-expanded={open}
         onClick={() => setOpen(true)}
-        className={open ? "hidden" : ""}
+        className={`${styles.toggle} ${open ? styles.hidden : ""}`}
       >
-        <SafeImage src={icon} alt="chat-Logo" width={50} height={31} />
+        <SafeImage src="/assets/chat-icon.png" alt="" width={50} height={31} />
       </button>
 
-      <div id="chat-box" className={open ? "open" : ""}>
-        <div id="chat-header">
-          <span>
-            <SafeImage className="img707" src={icon3} alt="icon3" />
+      <section
+        id="chat-box"
+        className={`${styles.chatBox} ${open ? styles.open : ""}`}
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby="chat-title"
+      >
+        <header className={styles.header}>
+          <h2 id="chat-title" className={styles.srOnly}>NextApp assistant</h2>
+          <span className={styles.brandIcon}>
+            <SafeImage src="/assets/icon3.webp" alt="" />
           </span>
-          <button id="clear-btn" title="Clear Chat" onClick={clearHistory}>
-            <SafeImage className="img708" src={icon1} alt="icon1" />
+          <button type="button" className={styles.clearButton} aria-label="Clear chat history" onClick={clearHistory}>
+            <SafeImage src="/assets/icon1.svg" alt="" />
           </button>
-          <button id="close-btn" title="Close" onClick={() => setOpen(false)}>
-            <SafeImage className="img709" src={icon2} alt="icon2" />
+          <button type="button" className={styles.closeButton} aria-label="Close chat" onClick={closeChat}>
+            <SafeImage src="/assets/icon2.svg" alt="" />
           </button>
-        </div>
+        </header>
 
-        <div id="chat-messages" ref={messagesRef}>
-          {messages.map((m, idx) => (
-            <div className={`bubble ${m.role}`} key={idx}>
-              <div className="bubble-content">{renderMessageContent(m)}</div>
+        <div ref={messagesRef} className={styles.messages} role="log" aria-live="polite" aria-relevant="additions text" aria-busy={sending}>
+          {messages.map((message, index) => (
+            <div className={`${styles.bubble} ${message.role === "user" ? styles.user : styles.bot}`} key={`${message.role}-${index}`}>
+              <div className={styles.bubbleContent}>{renderMessageContent(message)}</div>
             </div>
           ))}
           {isTyping && (
-            <div
-              className={`bubble bot`}
-              key="typing"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              <div className="bubble-content">
-                <span className="chatwidget-typing-dots" aria-hidden="true">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </span>
-                <span className="chatwidget-sr-only">Bot is typing…</span>
+            <div className={`${styles.bubble} ${styles.bot}`} role="status" aria-live="polite" aria-atomic="true">
+              <div className={styles.bubbleContent}>
+                <span className={styles.typingDots} aria-hidden="true"><span /><span /><span /></span>
+                <span className={styles.srOnly}>Assistant is typing…</span>
               </div>
             </div>
           )}
         </div>
 
-        <div id="chat-input">
+        <form
+          className={styles.inputArea}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!sending) void sendMessage();
+          }}
+        >
           <input
+            ref={inputRef}
             type="text"
-            id="user-input"
+            aria-label="Message to NextApp assistant"
             placeholder="Type your message..."
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (!sending) sendMessage();
-              }
-            }}
+            onChange={(event) => setInput(event.target.value)}
+            maxLength={300}
           />
-          <button
-            type="button"
-            id="send-btn"
-            title="send-btn"
-            onClick={() => !sending && sendMessage()}
-            disabled={sending}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="svg-icon-001"
-              viewBox="0 0 1024 1024"
-              version="1.1"
-            >
+          <button type="submit" className={styles.sendButton} aria-label="Send message" disabled={sending}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" aria-hidden="true">
               <path d="M41.353846 876.307692l86.646154-320.984615h366.276923c9.846154 0 19.692308-9.846154 19.692308-19.692308v-39.384615c0-9.846154-9.846154-19.692308-19.692308-19.692308H128l-84.676923-315.076923C41.353846 157.538462 39.384615 151.630769 39.384615 145.723077c0-13.784615 13.784615-27.569231 29.538462-25.6 3.938462 0 5.907692 1.969231 9.846154 1.969231l886.153846 364.307692c11.815385 3.938462 19.692308 15.753846 19.692308 27.569231s-7.876923 21.661538-17.723077 25.6L78.769231 913.723077c-3.938462 1.969231-7.876923 1.969231-11.815385 1.969231-15.753846-1.969231-27.569231-13.784615-27.569231-29.538462 0-3.938462 0-5.907692 1.969231-9.846154z" />
             </svg>
           </button>
-        </div>
-      </div>
+        </form>
+      </section>
     </>
   );
 }

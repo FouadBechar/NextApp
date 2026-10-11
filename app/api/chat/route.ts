@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL =
-  process.env.NEXT_PUBLIC_CHAT_DEFAULT_MODEL || "openai/gpt-4o-mini";
+  process.env.CHAT_DEFAULT_MODEL || "openai/gpt-4o-mini";
 const DEFAULT_MAX_TOKENS = 1024;
 const MAX_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 300;
@@ -18,7 +18,7 @@ type RateLimitEntry = {
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-type ChatMessage = {
+type ClientChatMessage = {
   role?: unknown;
   content?: unknown;
 };
@@ -62,16 +62,19 @@ function normalizeMessages(messages: unknown) {
   }
 
   return messages
-    .map((message) => message as ChatMessage)
+    .map((message) => message as ClientChatMessage)
     .map((message) => ({
       role:
         message.role === "assistant" ||
-        message.role === "system" ||
         message.role === "user"
           ? message.role
-          : "user",
+          : null,
       content: typeof message.content === "string" ? message.content : "",
     }))
+    .filter(
+      (message): message is { role: "assistant" | "user"; content: string } =>
+        message.role !== null,
+    )
     .map((message) => ({
       ...message,
       content: message.content.trim().slice(0, MAX_MESSAGE_CHARS),
@@ -113,7 +116,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const payload = body as { messages?: unknown; model?: unknown };
+  const payload = body as { messages?: unknown };
   const messages = normalizeMessages(payload.messages);
 
   if (messages.length === 0) {
@@ -133,7 +136,7 @@ export async function POST(request: Request) {
         "X-Title": "NextApp",
       },
       body: JSON.stringify({
-        model: typeof payload.model === "string" ? payload.model : DEFAULT_MODEL,
+        model: DEFAULT_MODEL,
         messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
         max_tokens: DEFAULT_MAX_TOKENS,
       }),

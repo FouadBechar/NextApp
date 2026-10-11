@@ -51,7 +51,7 @@ The app integrates with several external services:
 
 - `Resend` email service for verification, password reset, and broadcast emails.
 - `reCAPTCHA` to protect signup/login flows and form submissions.
-- A chat backend at `https://chat-779e.onrender.com/chat` for chat widget interactions.
+- OpenRouter, called only by the server-side `app/api/chat/route.ts` handler.
 
 ## Important project files
 
